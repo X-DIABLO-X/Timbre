@@ -1,0 +1,12 @@
+{
+  "read_ahead_uncolored_hex": "#B0B5BC",
+  "unknown_speaker_hex": "#9AA0A6",
+  "speakers": [
+    { "slot": 0, "id": "SPK_00", "name": "CWI Electric Cyan", "color_hex": "#4FC3F7", "ass_bgr": "&H00F7C34F&" },
+    { "slot": 1, "id": "SPK_01", "name": "CWI Amber Gold",    "color_hex": "#FFD54F", "ass_bgr": "&H004FD5FF&" },
+    { "slot": 2, "id": "SPK_02", "name": "CWI Coral Rose",    "color_hex": "#FF8A80", "ass_bgr": "&H00808AFF&" },
+    { "slot": 3, "id": "SPK_03", "name": "CWI Mint Emerald",  "color_hex": "#69F0AE", "ass_bgr": "&H00AEF069&" },
+    { "slot": 4, "id": "SPK_04", "name": "CWI Lavender Violet","color_hex": "#B388FF", "ass_bgr": "&H00FF88B3&" },
+    { "slot": 5, "id": "SPK_05", "name": "CWI Tangerine",     "color_hex": "#FFAB40", "ass_bgr": "&H0040ABFF&" }
+  ]
+}

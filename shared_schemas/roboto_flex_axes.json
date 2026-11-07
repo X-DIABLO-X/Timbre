@@ -1,0 +1,136 @@
+{
+  "font_family": "Roboto Flex",
+  "total_axes": 13,
+  "axes": [
+    {
+      "tag": "wght",
+      "name": "Weight",
+      "min": 100,
+      "max": 1000,
+      "default": 400,
+      "cwi_min": 340,
+      "cwi_max": 900,
+      "description": "Modulated by inverse fundamental frequency (80 Hz -> 900, 250 Hz -> 340)."
+    },
+    {
+      "tag": "wdth",
+      "name": "Width",
+      "min": 25,
+      "max": 151,
+      "default": 100,
+      "cwi_min": 25,
+      "cwi_max": 151,
+      "description": "Modulated by pitch contour excursion and duration stretch; locked to 100 for Korean."
+    },
+    {
+      "tag": "opsz",
+      "name": "Optical Size",
+      "min": 8.0,
+      "max": 144.0,
+      "default": 14.0,
+      "cwi_min": 8.0,
+      "cwi_max": 144.0,
+      "description": "Optical point size tuning, scaled with crest scale."
+    },
+    {
+      "tag": "slnt",
+      "name": "Slant",
+      "min": -10.0,
+      "max": 0.0,
+      "default": 0.0,
+      "cwi_min": -10.0,
+      "cwi_max": 0.0,
+      "description": "Slant in counter-clockwise degrees (-10 for offscreen or sound effects)."
+    },
+    {
+      "tag": "GRAD",
+      "name": "Grade",
+      "min": -200,
+      "max": 150,
+      "default": 0,
+      "cwi_min": -200,
+      "cwi_max": 150,
+      "description": "Zero-reflow stroke density weight mapped from token prominence score."
+    },
+    {
+      "tag": "XTRA",
+      "name": "Extra Counter Width",
+      "min": 323,
+      "max": 603,
+      "default": 468,
+      "cwi_min": 323,
+      "cwi_max": 603,
+      "description": "Internal counter width (widened to 520 when duration < 180ms for high-speed legibility)."
+    },
+    {
+      "tag": "XOPQ",
+      "name": "Opaque X",
+      "min": 27,
+      "max": 175,
+      "default": 96,
+      "cwi_min": 27,
+      "cwi_max": 175,
+      "description": "Thick vertical stroke width modulated by vocal strain and affect."
+    },
+    {
+      "tag": "YOPQ",
+      "name": "Opaque Y",
+      "min": 25,
+      "max": 135,
+      "default": 79,
+      "cwi_min": 25,
+      "cwi_max": 135,
+      "description": "Thin horizontal stroke width modulated by vocal strain and affect."
+    },
+    {
+      "tag": "YTAS",
+      "name": "Ascender Height",
+      "min": 649,
+      "max": 854,
+      "default": 750,
+      "cwi_min": 649,
+      "cwi_max": 854,
+      "description": "Ascender height (compressed toward 649 for crest scale > 1.35)."
+    },
+    {
+      "tag": "YTDE",
+      "name": "Descender Depth",
+      "min": -305,
+      "max": -98,
+      "default": -203,
+      "cwi_min": -305,
+      "cwi_max": -98,
+      "description": "Descender depth (compressed toward -98 for crest scale > 1.35)."
+    },
+    {
+      "tag": "YTLC",
+      "name": "Lowercase Height",
+      "min": 416,
+      "max": 570,
+      "default": 514,
+      "cwi_min": 416,
+      "cwi_max": 570,
+      "description": "Lowercase x-height."
+    },
+    {
+      "tag": "YTUC",
+      "name": "Uppercase Height",
+      "min": 528,
+      "max": 760,
+      "default": 712,
+      "cwi_min": 528,
+      "cwi_max": 760,
+      "description": "Uppercase cap-height."
+    },
+    {
+      "tag": "YTFI",
+      "name": "Figure Height",
+      "min": 560,
+      "max": 788,
+      "default": 738,
+      "cwi_min": 560,
+      "cwi_max": 788,
+      "description": "Lining figure / numeric glyph height."
+    }
+  ]
+}

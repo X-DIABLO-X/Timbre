@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://captionwithintention.org/schemas/v2.0-cwi/caption_spec.schema.json",
+  "title": "CaptionSpec",
+  "description": "Versioned JSON contract connecting the Parallel ML Audio Engine and the Deterministic CwiRenderer.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "segment_id",
+    "presentation_offset_ms",
+    "work_area_box",
+    "non_speech_events",
+    "words"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2.0-cwi"
+    },
+    "segment_id": {
+      "type": "string",
+      "pattern": "^seg_[a-zA-Z0-9_]+$"
+    },
+    "stream_acoustic_time_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional current acoustic clock timestamp in ms when emitted in live streaming mode."
+    },
+    "locale": {
+      "type": "string",
+      "default": "en",
+      "description": "BCP-47 language code (e.g., 'en', 'ko'). Controls Roboto Flex vs. Noto Sans KR font selection."
+    },
+    "presentation_offset_ms": {
+      "type": "integer",
+      "minimum": 420,
+      "maximum": 5000,
+      "default": 1750,
+      "description": "Dual-clock read-ahead offset in milliseconds (default 1750ms, minimum floor 420ms)."
+    },
+    "work_area_box": {
+      "type": "object",
+      "required": ["bottom_pct", "bg_opacity"],
+      "additionalProperties": false,
+      "properties": {
+        "bottom_pct": {
+          "type": "number",
+          "const": 20,
+          "description": "Strictly restricted to the lower 20% work area of the video viewport."
+        },
+        "bg_opacity": {
+          "type": "number",
+          "const": 0.90,
+          "description": "90% opacity black caption box (rgba(0, 0, 0, 0.90))."
+        }
+      }
+    },
+    "non_speech_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "label", "start_ms", "end_ms"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BGM",
+              "APPLAUSE",
+              "LAUGHTER",
+              "CRYING",
+              "SIGH",
+              "GASP",
+              "COUGH",
+              "SNEEZE",
+              "BREATHING",
+              "SCREAM",
+              "YAWN",
+              "THROAT_CLEARING",
+              "SNIFF"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "enum": [
+              "<|BGM|>",
+              "<|Applause|>",
+              "[laughter]",
+              "[crying]",
+              "[sighs]",
+              "[gasps]",
+              "[coughing]",
+              "[sneezing]",
+              "[breathing]",
+              "[screaming]",
+              "[yawning]",
+              "[throat clearing]",
+              "[sniffs]"
+            ]
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "default": 1.0
+          }
+        }
+      }
+    },
+    "words": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "word_id",
+          "text",
+          "start_ms",
+          "end_ms",
+          "duration_ms",
+          "speaker",
+          "prosody",
+          "typography"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "word_id": {
+            "type": "string",
+            "pattern": "^w_[a-zA-Z0-9_]+$"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "is_disfluency": {
+            "type": "boolean",
+            "default": false
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "speaker": {
+            "type": "object",
+            "required": ["id", "state", "color_hex"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Speaker identifier (e.g., 'SPK_00', 'SPK_01', 'SPK_UNKNOWN')."
+              },
+              "state": {
+                "type": "string",
+                "enum": ["unknown", "provisional", "stable", "corrected"],
+                "description": "Weave 4-state attribution lifecycle."
+              },
+              "color_hex": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "description": "Assigned speaker hex color (or #9AA0A6 neutral grey when state is 'unknown')."
+              },
+              "compass_bearing_deg": {
+                "type": ["number", "null"],
+                "minimum": -180.0,
+                "maximum": 180.0,
+                "default": null,
+                "description": "Azimuth angle in degrees from wearable mic array (-180 to +180, 0 is straight ahead)."
+              },
+              "compass_spread_deg": {
+                "type": ["number", "null"],
+                "minimum": 0.0,
+                "maximum": 180.0,
+                "default": null,
+                "description": "Angular spread of microphone DoA observations in degrees."
+              }
+            }
+          },
+          "prosody": {
+            "type": "object",
+            "required": [
+              "rms_db",
+              "f0_word_hz",
+              "f0_speaker_median_hz",
+              "prominence_score",
+              "isolated_silence_hold"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "rms_db": {
+                "type": "number",
+                "minimum": -100.0,
+                "maximum": 0.0
+              },
+              "f0_word_hz": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1000.0
+              },
+              "f0_speaker_median_hz": {
+                "type": "number",
+                "minimum": 50.0,
+                "maximum": 500.0
+              },
+              "prominence_score": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0
+              },
+              "isolated_silence_hold": {
+                "type": "boolean"
+              },
+              "pitch_contour_norm": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0.0,
+                  "maximum": 1.0
+                },
+                "description": "Optional normalized intra-word pitch contour samples driving Roboto Flex wdth modulation."
+              }
+            }
+          },
+          "typography": {
+            "type": "object",
+            "required": [
+              "crest_scale",
+              "crest_sustain_scale",
+              "pop_scale",
+              "wght",
+              "wdth",
+              "grad",
+              "hold_lift_em"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "crest_scale": {
+                "type": "number",
+                "minimum": 0.72,
+                "maximum": 1.62
+              },
+              "crest_sustain_scale": {
+                "type": "number",
+                "minimum": 0.50,
+                "maximum": 1.62
+              },
+              "pop_scale": {
+                "type": "number",
+                "const": 1.15
+              },
+              "wght": {
+                "type": "integer",
+                "minimum": 340,
+                "maximum": 900
+              },
+              "wdth": {
+                "type": "integer",
+                "minimum": 25,
+                "maximum": 151
+              },
+              "grad": {
+                "type": "integer",
+                "minimum": -200,
+                "maximum": 150
+              },
+              "hold_lift_em": {
+                "type": "number",
+                "minimum": -0.525,
+                "maximum": 0.0
+              },
+              "slnt": {
+                "type": "number",
+                "minimum": -10.0,
+                "maximum": 0.0,
+                "default": 0.0
+              },
+              "opsz": {
+                "type": "number",
+                "minimum": 8.0,
+                "maximum": 144.0,
+                "default": 14.0
+              },
+              "xtra": {
+                "type": "integer",
+                "minimum": 323,
+                "maximum": 603,
+                "default": 468
+              },
+              "xopq": {
+                "type": "integer",
+                "minimum": 27,
+                "maximum": 175,
+                "default": 96
+              },
+              "yopq": {
+                "type": "integer",
+                "minimum": 25,
+                "maximum": 135,
+                "default": 79
+              },
+              "ytas": {
+                "type": "integer",
+                "minimum": 649,
+                "maximum": 854,
+                "default": 750
+              },
+              "ytde": {
+                "type": "integer",
+                "minimum": -305,
+                "maximum": -98,
+                "default": -203
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

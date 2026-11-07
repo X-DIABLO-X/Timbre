@@ -1,0 +1,121 @@
+import re
+from typing import List, Optional, Tuple
+import numpy as np
+
+from backend.config import EngineConfig
+from backend.schemas.caption_spec import NonSpeechEvent
+
+
+SENSEVOICE_EVENT_MAP = {
+    "<|BGM|>": ("BGM", "<|BGM|>"),
+    "<|Music|>": ("BGM", "<|BGM|>"),
+    "<|Applause|>": ("APPLAUSE", "<|Applause|>"),
+    "<|Laughter|>": ("LAUGHTER", "[laughter]"),
+    "<|Cry|>": ("CRYING", "[crying]"),
+    "<|Cough|>": ("COUGH", "[coughing]"),
+    "<|Sneeze|>": ("SNEEZE", "[sneezing]"),
+    "<|Breath|>": ("BREATHING", "[breathing]"),
+    "<|Sigh|>": ("SIGH", "[sighs]"),
+    "<|Gasp|>": ("GASP", "[gasps]"),
+}
+
+
+class ParalinguisticEventEngine:
+    # Stream 4: SenseVoice-Small/Large audio event tagging + emotion2vec+ 50Hz frame affect.
+    def __init__(self, config: EngineConfig):
+        self.config = config
+        self.sensevoice_model = None
+        self.emotion2vec_model = None
+        self._load_models()
+
+    def _load_models(self) -> None:
+        try:
+            from funasr import AutoModel
+            self.sensevoice_model = AutoModel(
+                model=self.config.sensevoice_model_id,
+                trust_remote_code=True,
+                device=self.config.device if self.config.device != "mps" else "cpu",
+                disable_update=True,
+            )
+        except Exception:
+            self.sensevoice_model = None
+
+        try:
+            from funasr import AutoModel
+            if "mlx" not in self.config.emotion2vec_model_id:
+                self.emotion2vec_model = AutoModel(
+                    model=self.config.emotion2vec_model_id,
+                    disable_update=True,
+                )
+        except Exception:
+            self.emotion2vec_model = None
+
+    def detect_events_and_affect(
+        self,
+        audio_f32: np.ndarray,
+        bgm_stem: Optional[np.ndarray],
+        window_start_ms: int,
+    ) -> Tuple[List[NonSpeechEvent], np.ndarray]:
+        dur_ms = max(100, int(round((len(audio_f32) / 16000.0) * 1000.0)))
+        num_frames_50hz = max(1, dur_ms // 20)
+        events_out: List[NonSpeechEvent] = []
+
+        # 1. Check separated BGM stem energy if SCNet/Demucs is active
+        if bgm_stem is not None and len(bgm_stem) > 0:
+            bgm_rms = float(np.sqrt(np.mean(np.square(bgm_stem)) + 1e-12))
+            if bgm_rms > 0.025:  # > -32 dBFS sustained music stem
+                events_out.append(
+                    NonSpeechEvent(
+                        type="BGM",
+                        label="<|BGM|>",
+                        start_ms=window_start_ms,
+                        end_ms=window_start_ms + dur_ms,
+                        confidence=0.92,
+                    )
+                )
+
+        # 2. Run SenseVoice-Small for <15x faster single-pass AED & SER tags
+        if self.sensevoice_model is not None and len(audio_f32) >= 1600:
+            try:
+                res = self.sensevoice_model.generate(
+                    input=audio_f32,
+                    cache={},
+                    language="auto",
+                    use_itn=False,
+                    batch_size_s=30,
+                )
+                raw_text = res[0].get("text", "") if res else ""
+                for tag_str, (ev_type, ev_label) in SENSEVOICE_EVENT_MAP.items():
+                    if tag_str in raw_text:
+                        if not any(e.type == ev_type for e in events_out):
+                            events_out.append(
+                                NonSpeechEvent(
+                                    type=ev_type,  # type: ignore
+                                    label=ev_label,  # type: ignore
+                                    start_ms=window_start_ms,
+                                    end_ms=window_start_ms + dur_ms,
+                                    confidence=0.95,
+                                )
+                            )
+            except Exception:
+                pass
+
+        # 3. Extract 50Hz frame affect representations via emotion2vec+
+        affect_frames = np.zeros((num_frames_50hz, 9), dtype=np.float32)
+        affect_frames[:, 4] = 1.0  # Default neutral class = index 4
+
+        if self.emotion2vec_model is not None and len(audio_f32) >= 1600:
+            try:
+                e2v_res = self.emotion2vec_model.generate(
+                    audio_f32,
+                    granularity="frame",
+                    extract_embedding=True,
+                )
+                if e2v_res and "scores" in e2v_res[0]:
+                    scores = np.array(e2v_res[0]["scores"], dtype=np.float32)
+                    if scores.ndim == 2:
+                        affect_frames = scores
+            except Exception:
+                pass
+
+        return events_out, affect_frames

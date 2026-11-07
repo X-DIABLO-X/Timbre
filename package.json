@@ -1,0 +1,27 @@
+{
+  "name": "cwi-platform-web",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:player": "vite --config frontend_renderer/vite.config.ts",
+    "build:player": "tsc && vite build --config frontend_renderer/vite.config.ts",
+    "build:extension": "node scripts/build_extension.mjs",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.1.2",
+    "onnxruntime-web": "^1.19.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.270",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.2"
+  }
+}

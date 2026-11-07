@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Caption with Intention — Real-Time Expressive Subtitles",
+  "version": "2.0.0",
+  "description": "Real-time speaker attribution, word-onset synchronization wipes, and variable Roboto Flex prosodic typography.",
+  "permissions": [
+    "tabCapture",
+    "offscreen",
+    "storage",
+    "activeTab",
+    "scripting",
+    "downloads",
+    "tabs",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1:8765/*",
+    "ws://127.0.0.1:8765/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Caption with Intention Controls"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content/overlay.css",
+        "assets/fonts/RobotoFlex-Full.woff2",
+        "assets/fonts/RobotoFlex-Subset-wdth-wght.woff2",
+        "assets/fonts/NotoSansKR-Variable.woff2"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  }
+}

@@ -1,0 +1,76 @@
+# Hyperparameters for WhiStress Layer-9 Prominence Head (7M params)
+# Attached to frozen CrisperWhisper 2.0 / Whisper-turbo / Whisper-small backbones.
+# References: WhiStress (Interspeech 2025, arXiv:2505.19103v1), CWI Platform Architecture.
+
+model:
+  name: "whistress_layer9_head"
+  # Target architecture configurations
+  # whisper-small: d_model=768, nhead=12, dim_feedforward=3072, enc_tap=9, dec_tap=9
+  # whisper-large-v3-turbo: d_model=1280, nhead=20, dim_feedforward=5120, enc_tap=24, dec_tap=3
+  # crisperwhisper-large: d_model=1280, nhead=20, dim_feedforward=5120, enc_tap=24, dec_tap=24
+  d_model: 768
+  nhead: 12
+  dim_feedforward: 3072
+  dropout: 0.1
+  trainable_params_target: "~7.02M"
+
+backbone:
+  default_id: "openai/whisper-small.en"
+  crisper_id: "nyralabs/CrisperWhisper2.0_large"
+  turbo_id: "openai/whisper-large-v3-turbo"
+  freeze_backbone: true
+  
+  # Layer tap points: Layer 9 corresponds to prosodic peak (synergy of pitch/RMS and semantics)
+  enc_tap_layer: 9
+  dec_tap_layer: 9
+  # For 32-layer Large backbones, proportional depth 9/12 = 75%:
+  enc_tap_layer_large: 24
+  dec_tap_layer_large: 24
+  dec_tap_layer_turbo: 3
+
+training:
+  optimizer: "AdamW"
+  lr: 0.0001
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  scheduler: "linear_with_warmup"
+  
+  # Stage 1: Synthetic pre-training on TinyStress-15K
+  stage1:
+    epochs: 5
+    batch_size: 16
+    gradient_accumulation_steps: 2
+    max_grad_norm: 1.0
+  
+  # Stage 2: Natural broadcast & conversational fine-tuning on BU-RNC & Buckeye
+  stage2:
+    epochs: 3
+    batch_size: 16
+    gradient_accumulation_steps: 2
+    lr: 0.00005
+    max_grad_norm: 1.0
+
+  # Loss function & supervision rule:
+  # All non-word punctuation tokens (.,!?' etc.) are explicitly supervised as 0.0
+  loss:
+    type: "BCEWithLogitsLoss"
+    pos_weight: 2.5
+    punct_label: 0.0
+
+datasets:
+  stage1_dataset: "slprl/TinyStress-15K"
+  stage2_burnc_manifest: "data/manifests/burnc_train.jsonl"
+  stage2_buckeye_manifest: "data/manifests/buckeye_train.jsonl"
+  val_split: "test"
+
+metrics:
+  target_f1_tinystress: 0.909
+  target_f1_aix_marsec: 0.961
+
+paths:
+  save_dir: "weights"
+  checkpoint_file: "whistress_small_layer9.pt"
+  checkpoint_large_file: "whistress_large_layer24.pt"
+  onnx_export_dir: "weights/onnx"

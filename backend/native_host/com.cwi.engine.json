@@ -1,0 +1,9 @@
+{
+  "name": "com.cwi.engine",
+  "description": "Automated Caption with Intention Local Python FastAPI ML Launcher",
+  "path": "launcher.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"
+  ]
+}
