@@ -1,9 +1,13 @@
 import asyncio
 import json
+import os
+import re
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Dict, Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from backend.config import detect_optimal_profile
 from backend.ml_engine.orchestrator import ParallelAudioPipeline
@@ -47,6 +51,84 @@ async def health_check() -> Dict[str, str]:
         "hardware_tier": cfg.tier,
         "device": cfg.device,
     }
+
+
+@app.head("/api/video/dune")
+async def head_dune_video():
+    video_path = Path("D:/dune/final_video.mp4")
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Dune video not found at D:/dune/final_video.mp4")
+    file_size = video_path.stat().st_size
+    return Response(
+        headers={
+            "Content-Length": str(file_size),
+            "Accept-Ranges": "bytes",
+            "Content-Type": "video/mp4",
+        }
+    )
+
+
+@app.get("/api/video/dune")
+async def stream_dune_video(request: Request):
+    video_path = Path("D:/dune/final_video.mp4")
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Dune video not found at D:/dune/final_video.mp4")
+
+    file_size = video_path.stat().st_size
+    range_header = request.headers.get("range")
+
+    if not range_header:
+        def iterfile():
+            with open(video_path, mode="rb") as f:
+                while chunk := f.read(1024 * 1024):
+                    yield chunk
+        return StreamingResponse(
+            iterfile(),
+            media_type="video/mp4",
+            headers={"Content-Length": str(file_size), "Accept-Ranges": "bytes"}
+        )
+
+    range_match = re.match(r"bytes=(\d+)-(\d*)", range_header)
+    if not range_match:
+        raise HTTPException(status_code=416, detail="Invalid Range header")
+
+    start = int(range_match.group(1))
+    end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
+    end = min(end, file_size - 1)
+    chunk_size = end - start + 1
+
+    def iterfile_range(start_byte: int, end_byte: int):
+        with open(video_path, mode="rb") as f:
+            f.seek(start_byte)
+            remaining = end_byte - start_byte + 1
+            while remaining > 0:
+                read_bytes = min(remaining, 512 * 1024)
+                data = f.read(read_bytes)
+                if not data:
+                    break
+                remaining -= len(data)
+                yield data
+
+    headers = {
+        "Content-Range": f"bytes {start}-{end}/{file_size}",
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(chunk_size),
+    }
+    return StreamingResponse(
+        iterfile_range(start, end),
+        status_code=206,
+        media_type="video/mp4",
+        headers=headers,
+    )
+
+
+@app.get("/api/captions/dune")
+async def get_dune_captions():
+    cwi_path = Path("D:/dune/final_video.cwi.json")
+    if not cwi_path.exists():
+        from backend.ml_engine.dune_cwi_generator import convert_dune_srt_to_cwi
+        convert_dune_srt_to_cwi()
+    return JSONResponse(content=json.loads(cwi_path.read_text(encoding="utf-8")))
 
 
 @app.websocket("/ws")

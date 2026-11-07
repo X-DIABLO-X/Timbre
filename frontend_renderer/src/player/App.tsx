@@ -181,19 +181,29 @@ export const App: React.FC = () => {
 
   // Derive active voice compass bearing from words near the current playhead
   const activeVoiceBearing = useMemo<VoiceCompassBearing | null>(() => {
+    if (!captionSpecs || captionSpecs.length === 0) return null;
     for (const spec of captionSpecs) {
-      for (const w of spec.words || []) {
-        if (
-          currentTimeMs >= w.start_ms - 200 &&
-          currentTimeMs <= w.end_ms + 400 &&
-          w.speaker.compass_bearing_deg != null
-        ) {
-          return {
-            bearingDeg: w.speaker.compass_bearing_deg,
-            spreadDeg: w.speaker.compass_spread_deg ?? 15,
-            colorHex: w.speaker.color_hex,
-            speakerId: w.speaker.id,
-          };
+      const words = spec.words || [];
+      if (words.length === 0) continue;
+      const start = words[0].start_ms - 200;
+      const end = words[words.length - 1].end_ms + 400;
+      if (currentTimeMs < start) {
+        break; // Specs are chronologically sorted
+      }
+      if (currentTimeMs >= start && currentTimeMs <= end) {
+        for (const w of words) {
+          if (
+            currentTimeMs >= w.start_ms - 200 &&
+            currentTimeMs <= w.end_ms + 400 &&
+            w.speaker.compass_bearing_deg != null
+          ) {
+            return {
+              bearingDeg: w.speaker.compass_bearing_deg,
+              spreadDeg: w.speaker.compass_spread_deg ?? 15,
+              colorHex: w.speaker.color_hex,
+              speakerId: w.speaker.id,
+            };
+          }
         }
       }
     }
@@ -279,6 +289,32 @@ export const App: React.FC = () => {
     reader.readAsText(file);
   }, []);
 
+  const handleLoadDuneDemo = useCallback(async () => {
+    try {
+      const resp = await fetch('http://127.0.0.1:8765/api/captions/dune');
+      if (resp.ok) {
+        const data = await resp.json();
+        setCaptionSpecs(data);
+      }
+      setVideoSrc('http://127.0.0.1:8765/api/video/dune');
+    } catch {
+      setVideoSrc('http://127.0.0.1:8765/api/video/dune');
+    }
+  }, []);
+
+  // Automatically load Dune video and CWI captions on mount
+  useEffect(() => {
+    fetch('http://127.0.0.1:8765/api/captions/dune')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCaptionSpecs(data);
+          setVideoSrc('http://127.0.0.1:8765/api/video/dune');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div
       style={{
@@ -361,6 +397,7 @@ export const App: React.FC = () => {
         onPresentationOffsetChange={setPresentationOffsetMs}
         captionSpecs={captionSpecs}
         onLoadSampleData={handleLoadSampleData}
+        onLoadDuneDemo={handleLoadDuneDemo}
         onLoadVideoFile={handleLoadVideoFile}
         onLoadCaptionFile={handleLoadCaptionFile}
       />

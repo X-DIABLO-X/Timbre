@@ -21,6 +21,7 @@ export interface ControlPanelProps {
   onPresentationOffsetChange: (offsetMs: number) => void;
   captionSpecs: CaptionSpec[];
   onLoadSampleData: () => void;
+  onLoadDuneDemo?: () => void;
   onLoadVideoFile: (file: File) => void;
   onLoadCaptionFile: (file: File) => void;
 }
@@ -132,6 +133,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onPresentationOffsetChange,
   captionSpecs,
   onLoadSampleData,
+  onLoadDuneDemo,
   onLoadVideoFile,
   onLoadCaptionFile,
 }) => {
@@ -220,6 +222,28 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {onLoadDuneDemo && (
+            <button
+              onClick={onLoadDuneDemo}
+              title="Loads D:\dune\final_video.mp4 with 1,323 CWI expressive caption segments"
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: '1px solid #eab308',
+                backgroundColor: 'rgba(234, 179, 8, 0.20)',
+                color: '#facc15',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              🏜️ Load Dune Demo
+            </button>
+          )}
+
           <button
             onClick={onLoadSampleData}
             style={{

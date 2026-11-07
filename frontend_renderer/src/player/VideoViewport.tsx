@@ -35,7 +35,7 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayHostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<CwiRenderer | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [, setIsPlaying] = useState(false);
 
   // Initialize and update CwiRenderer instance
   useEffect(() => {
@@ -48,9 +48,9 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
     }
     rendererRef.current.setPresentationOffsetMs(presentationOffsetMs);
 
-    return () => {
-      // Keep renderer alive during re-renders, cleanup on unmount
-    };
+    if (containerRef.current) {
+      rendererRef.current.setViewportHeightPx(containerRef.current.clientHeight);
+    }
   }, [profile, presentationOffsetMs]);
 
   // Adjust --cwi-vh on container resize
@@ -67,16 +67,13 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
     return () => window.removeEventListener('resize', updateViewportHeight);
   }, []);
 
-  // Ingest specs when they change
+  // Set specs when captionSpecs changes
   useEffect(() => {
-    if (!rendererRef.current || captionSpecs.length === 0) return;
+    if (!rendererRef.current) return;
+    rendererRef.current.setCaptionSpecs(captionSpecs);
     const currentMs = videoRef.current ? Math.round(videoRef.current.currentTime * 1000) : 0;
-    const acousticMs = currentMs + presentationOffsetMs;
-
-    for (const spec of captionSpecs) {
-      rendererRef.current.ingestCaptionSpec(spec, acousticMs);
-    }
-  }, [captionSpecs, presentationOffsetMs]);
+    rendererRef.current.tick(currentMs);
+  }, [captionSpecs]);
 
   // Playhead animation loop (60-120 fps requestAnimationFrame)
   useEffect(() => {
@@ -86,19 +83,7 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
       const video = videoRef.current;
       if (video && rendererRef.current) {
         const currentMs = Math.round(video.currentTime * 1000);
-        const acousticMs = currentMs + presentationOffsetMs;
-
-        rendererRef.current.tick(acousticMs);
-
-        // Ingest upcoming specs dynamically as playhead moves
-        for (const spec of captionSpecs) {
-          const firstWordStart = spec.words?.[0]?.start_ms ?? 0;
-          const lastWordEnd = spec.words?.[spec.words.length - 1]?.end_ms ?? 0;
-          // Ingest within read-ahead horizon (up to 3 seconds ahead)
-          if (firstWordStart <= acousticMs + 3000 && lastWordEnd >= currentMs - 2000) {
-            rendererRef.current.ingestCaptionSpec(spec, acousticMs);
-          }
-        }
+        rendererRef.current.tick(currentMs);
 
         if (onTimeUpdate) {
           onTimeUpdate(currentMs);
@@ -109,7 +94,7 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [captionSpecs, presentationOffsetMs, onTimeUpdate]);
+  }, [onTimeUpdate]);
 
   const compassArc = voiceBearing
     ? computeCompassArcPath(36, 36, 26, voiceBearing.bearingDeg, voiceBearing.spreadDeg)
@@ -140,10 +125,28 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
           controls
           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
+          onPause={() => {
+            setIsPlaying(false);
+            if (videoRef.current && rendererRef.current) {
+              rendererRef.current.tick(Math.round(videoRef.current.currentTime * 1000));
+            }
+          }}
+          onSeeked={() => {
+            if (videoRef.current && rendererRef.current) {
+              rendererRef.current.tick(Math.round(videoRef.current.currentTime * 1000));
+            }
+          }}
+          onTimeUpdate={() => {
+            if (videoRef.current && rendererRef.current) {
+              rendererRef.current.tick(Math.round(videoRef.current.currentTime * 1000));
+            }
+          }}
           onLoadedMetadata={() => {
             if (videoRef.current && onLoadedMetadata) {
               onLoadedMetadata(videoRef.current.duration);
+            }
+            if (containerRef.current && rendererRef.current) {
+              rendererRef.current.setViewportHeightPx(containerRef.current.clientHeight);
             }
           }}
         />
