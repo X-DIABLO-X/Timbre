@@ -81,6 +81,8 @@ export class CwiRenderer {
       ...updatedProfile,
       intensity: Math.max(0.0, Math.min(1.0, updatedProfile.intensity ?? this.profile.intensity)),
     };
+    // Re-apply typography variables when profile or intensity changes
+    this.applyWordTypographyVariables();
   }
 
   public setViewportHeightPx(heightPx: number): void {
@@ -88,10 +90,6 @@ export class CwiRenderer {
     this.hostContainer.style.setProperty('--cwi-vh', `${vhPx}px`);
   }
 
-  /**
-   * Set all available CaptionSpecs for VOD playback.
-   * Sorts segments chronologically to support clean read-ahead windowing.
-   */
   public setCaptionSpecs(specs: CaptionSpec[]): void {
     this.allSpecs = [...specs].sort((a, b) => {
       const aStart = a.words?.[0]?.start_ms ?? a.non_speech_events?.[0]?.start_ms ?? 0;
@@ -100,9 +98,6 @@ export class CwiRenderer {
     });
   }
 
-  /**
-   * Ingests a single CaptionSpec v2.0-cwi packet (e.g. from WebSocket or file).
-   */
   public ingestCaptionSpec(spec: CaptionSpec, currentAcousticTimeMs?: number): void {
     const idx = this.allSpecs.findIndex((s) => s.segment_id === spec.segment_id);
     if (idx >= 0) {
@@ -125,10 +120,6 @@ export class CwiRenderer {
     }
   }
 
-  /**
-   * Finds the best active CaptionSpec for the current playback timestamp.
-   * Ensures that only ONE active utterance/sentence occupies the lower 20% box at any given time.
-   */
   private findActiveSpec(timeMs: number): CaptionSpec | null {
     if (this.allSpecs.length === 0) return null;
 
@@ -152,7 +143,6 @@ export class CwiRenderer {
         if (!candidate) {
           candidate = spec;
         } else {
-          // If previous candidate has completed speech and this spec is upcoming, switch to the upcoming one
           const candWords = candidate.words || [];
           const candEnd = candWords.length > 0 ? candWords[candWords.length - 1].end_ms : 0;
           if (timeMs > candEnd) {
@@ -165,10 +155,6 @@ export class CwiRenderer {
     return candidate;
   }
 
-  /**
-   * Switches the active DOM segment cleanly:
-   * Removes previous words, mounts new words in read-ahead neutral state, and unhides the caption box.
-   */
   private switchActiveSegment(spec: CaptionSpec | null): void {
     if (!spec) {
       if (this.activeSegmentId !== null) {
@@ -187,7 +173,7 @@ export class CwiRenderer {
     this.captionBoxEl.style.display = 'inline-flex';
     this.captionBoxEl.style.opacity = '1';
 
-    // 1. Mount Non-Speech Events (<|BGM|>, [laughter], [gasps], etc.)
+    // Mount Non-Speech Events
     for (const ev of spec.non_speech_events || []) {
       const sfxKey = `${ev.type}_${ev.start_ms}_${ev.end_ms}`;
       const badge = document.createElement('span');
@@ -200,7 +186,7 @@ export class CwiRenderer {
       this.sfxNodes.set(sfxKey, badge);
     }
 
-    // 2. Mount Word Tokens in Read-Ahead state (-1.75s)
+    // Mount Word Tokens
     for (const word of spec.words || []) {
       const span = document.createElement('span');
       span.className = 'cwi-word';
@@ -214,6 +200,27 @@ export class CwiRenderer {
       this.captionBoxEl.appendChild(span);
       this.wordNodes.set(word.word_id, span);
       this.wordTokens.set(word.word_id, word);
+    }
+
+    // Bind variable font axes ONCE on mount to prevent layout reflow during animation
+    this.applyWordTypographyVariables();
+  }
+
+  private applyWordTypographyVariables(): void {
+    const k = Math.max(0.0, Math.min(1.0, this.profile.intensity));
+    for (const [wordId, word] of this.wordTokens.entries()) {
+      const el = this.wordNodes.get(wordId);
+      if (!el) continue;
+
+      const t = word.typography;
+      let wght = this.profile.enableWeight ? Math.round(400 + k * (t.wght - 400)) : 400;
+      if (this.profile.isSafari && wght >= 398 && wght <= 402) {
+        wght = 404;
+      }
+      const wdth = Math.round(100 + k * ((t.wdth ?? 100) - 100));
+      const grad = Math.round(k * (t.grad ?? 0));
+
+      el.style.fontVariationSettings = `'wght' ${wght}, 'wdth' ${wdth}, 'GRAD' ${grad}, 'opsz' ${t.opsz ?? 14}, 'slnt' ${t.slnt ?? 0}, 'XTRA' ${t.xtra ?? 468}, 'XOPQ' ${t.xopq ?? 96}, 'YOPQ' ${t.yopq ?? 79}, 'YTAS' ${t.ytas ?? 750}, 'YTDE' ${t.ytde ?? -203}`;
     }
   }
 
@@ -229,13 +236,9 @@ export class CwiRenderer {
   }
 
   /**
-   * Frame-by-frame kinetic typography tick:
-   * Synchronously reconciles active segments and drives all 5 kinetic channels:
-   *   1. Colour Turn wipe (linear-gradient text-clip background-position)
-   *   2. 1.15x Pop impulse
-   *   3. Crest volume scaling
-   *   4. Weight pitch variation (Roboto Flex wght 340..900)
-   *   5. Hold lift (-0.525em for isolated silence holds)
+   * High-Performance 60-144fps Kinetic Animation Tick:
+   * Only manipulates GPU-accelerated background-position (wiping) and transform (scale & lift).
+   * Free from font-shaping layout reflows.
    */
   public tick(currentTimeMs: number): void {
     const activeSpec = this.findActiveSpec(currentTimeMs);
@@ -259,7 +262,7 @@ export class CwiRenderer {
       }
     }
 
-    // Update Word Tokens across all 5 Kinetic Channels
+    // Animate active words
     for (const [wordId, word] of this.wordTokens.entries()) {
       const el = this.wordNodes.get(wordId);
       if (!el) continue;
@@ -270,18 +273,12 @@ export class CwiRenderer {
       const t = word.typography;
 
       if (currentTimeMs < wordStart) {
-        // -------------------------------------------------------------
-        // STATE 1: Dual-Clock Read-Ahead Layer (-1.75s to 0s)
-        // -------------------------------------------------------------
-        el.style.backgroundPosition = '100% 0%'; // 100% neutral grey #B0B5BC
+        // STATE 1: Read-Ahead Layer
+        el.style.backgroundPosition = '100% 0%'; // Full neutral grey #B0B5BC
         el.style.transform = 'translateY(0em) scale(1.0)';
-        el.style.fontVariationSettings = "'wght' 400, 'wdth' 100, 'GRAD' 0, 'opsz' 14";
         delete el.dataset.cwiLocked;
       } else if (currentTimeMs <= wordEnd) {
-        // -------------------------------------------------------------
         // STATE 2: Active Spoken Utterance
-        // -------------------------------------------------------------
-        // IMMUTABLE POST-ONSET RULE: Freeze text content & bounding geometry
         if (!this.lockedWordIds.has(wordId)) {
           this.lockedWordIds.add(wordId);
           el.dataset.cwiLocked = 'true';
@@ -289,7 +286,7 @@ export class CwiRenderer {
 
         const progress = Math.max(0.0, Math.min(1.0, (currentTimeMs - wordStart) / wordDur));
 
-        // CHANNEL 1: Colour Turn wipe (smooth left-to-right color wipe)
+        // CHANNEL 1: Colour Turn wipe (smooth liquid wipe into speaker color)
         if (this.profile.enableColorTurn) {
           const wipePos = Math.max(0, Math.min(100, (1.0 - progress) * 100));
           el.style.backgroundPosition = `${wipePos.toFixed(2)}% 0%`;
@@ -297,7 +294,7 @@ export class CwiRenderer {
           el.style.backgroundPosition = '0% 0%';
         }
 
-        // CHANNELS 2 & 3: 1.15x Pop impulse + Crest volume envelope
+        // CHANNELS 2 & 3: Smooth spring Pop impulse + Crest volume envelope
         const popVal = this.profile.enablePop ? (t.pop_scale ?? 1.15) : 1.0;
         const crestPeak = this.profile.enableCrest ? (t.crest_scale ?? 1.0) : 1.0;
         const crestSustain = this.profile.enableCrest ? (t.crest_sustain_scale ?? 1.0) : 1.0;
@@ -307,56 +304,37 @@ export class CwiRenderer {
 
         let scale = 1.0;
         if (progress <= 0.18) {
-          const pNorm = progress / 0.18;
-          scale = 1.0 + pNorm * (sPeak - 1.0);
+          // Cubic ease-out spring impulse
+          const tau = progress / 0.18;
+          const easeOut = 1.0 - Math.pow(1.0 - tau, 3);
+          scale = 1.0 + easeOut * (sPeak - 1.0);
         } else if (progress <= 0.38) {
-          const pNorm = (progress - 0.18) / 0.20;
-          scale = sPeak - pNorm * (sPeak - sSustain);
+          // Smooth Hermite settle to sustain
+          const tau = (progress - 0.18) / 0.20;
+          const smoothStep = tau * tau * (3.0 - 2.0 * tau);
+          scale = sPeak - smoothStep * (sPeak - sSustain);
         } else {
           scale = sSustain;
         }
 
-        // CHANNEL 5: Hold Lift (-0.525em for isolated silence hold)
+        // CHANNEL 5: Hold Lift
         let holdEm = 0;
         if (this.profile.enableHold && word.prosody?.isolated_silence_hold) {
           holdEm = k * (t.hold_lift_em ?? -0.525);
         }
 
         el.style.transform = `translateY(${holdEm.toFixed(4)}em) scale(${scale.toFixed(4)})`;
-
-        // CHANNEL 4: Weight Pitch Variation & Variable Axes (Roboto Flex)
-        let wght = this.profile.enableWeight ? Math.round(400 + k * (t.wght - 400)) : 400;
-        if (this.profile.isSafari && wght >= 398 && wght <= 402) {
-          wght = 404;
-        }
-        const wdth = Math.round(100 + k * ((t.wdth ?? 100) - 100));
-        const grad = Math.round(k * (t.grad ?? 0));
-
-        el.style.fontVariationSettings = `'wght' ${wght}, 'wdth' ${wdth}, 'GRAD' ${grad}, 'opsz' ${t.opsz ?? 14}, 'slnt' ${t.slnt ?? 0}, 'XTRA' ${t.xtra ?? 468}, 'XOPQ' ${t.xopq ?? 96}, 'YOPQ' ${t.yopq ?? 79}, 'YTAS' ${t.ytas ?? 750}, 'YTDE' ${t.ytde ?? -203}`;
       } else {
-        // -------------------------------------------------------------
         // STATE 3: Post-Onset Spoken Word (Completed)
-        // -------------------------------------------------------------
         if (!this.lockedWordIds.has(wordId)) {
           this.lockedWordIds.add(wordId);
           el.dataset.cwiLocked = 'true';
         }
 
-        // Fully wiped to speaker color
-        el.style.backgroundPosition = '0% 0%';
-
+        el.style.backgroundPosition = '0% 0%'; // Full speaker color
         const crestSustain = this.profile.enableCrest ? (t.crest_sustain_scale ?? 1.0) : 1.0;
         const sSustain = 1.0 + k * (crestSustain - 1.0);
         el.style.transform = `translateY(0em) scale(${sSustain.toFixed(4)})`;
-
-        let wght = this.profile.enableWeight ? Math.round(400 + k * (t.wght - 400)) : 400;
-        if (this.profile.isSafari && wght >= 398 && wght <= 402) {
-          wght = 404;
-        }
-        const wdth = Math.round(100 + k * ((t.wdth ?? 100) - 100));
-        const grad = Math.round(k * (t.grad ?? 0));
-
-        el.style.fontVariationSettings = `'wght' ${wght}, 'wdth' ${wdth}, 'GRAD' ${grad}, 'opsz' ${t.opsz ?? 14}, 'slnt' ${t.slnt ?? 0}, 'XTRA' ${t.xtra ?? 468}, 'XOPQ' ${t.xopq ?? 96}, 'YOPQ' ${t.yopq ?? 79}, 'YTAS' ${t.ytas ?? 750}, 'YTDE' ${t.ytde ?? -203}`;
       }
     }
   }
@@ -431,7 +409,7 @@ export class CwiRenderer {
   transition: opacity 0.15s ease-out;
 }
 
-/* Base Word Token in Read-Ahead Layer (1.75s before onset, >= 420ms floor) */
+/* Base Word Token with Antialiased Sub-pixel Wipe Gradient */
 .cwi-word {
   position: relative;
   display: inline-block;
@@ -441,12 +419,12 @@ export class CwiRenderer {
   font-optical-sizing: none;
   white-space: pre;
 
-  /* CHANNEL 1: Colour Turn via linear-gradient background-clip: text wipe */
+  /* CHANNEL 1: Colour Turn via linear-gradient background-clip: text wipe with smooth feather */
   background-image: linear-gradient(
     90deg,
     var(--cwi-speaker-color, #4FC3F7) 0%,
-    var(--cwi-speaker-color, #4FC3F7) 50%,
-    var(--cwi-readahead-color, #B0B5BC) 50.01%,
+    var(--cwi-speaker-color, #4FC3F7) 48.5%,
+    var(--cwi-readahead-color, #B0B5BC) 51.5%,
     var(--cwi-readahead-color, #B0B5BC) 100%
   );
   background-size: 200% 100%;
@@ -457,7 +435,7 @@ export class CwiRenderer {
   color: transparent;
 
   transform-origin: center bottom;
-  will-change: transform, background-position, font-variation-settings;
+  will-change: transform, background-position;
 }
 
 /* Korean Locale Override */

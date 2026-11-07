@@ -28,7 +28,7 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
   profile,
   presentationOffsetMs,
   voiceBearing,
-  onTimeUpdate,
+  onTimeUpdate: onTimeUpdateProp,
   onLoadedMetadata,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,18 +75,37 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
     rendererRef.current.tick(currentMs);
   }, [captionSpecs]);
 
-  // Playhead animation loop (60-120 fps requestAnimationFrame)
+  // Liquid-smooth sub-frame interpolation loop (60-144 fps)
   useEffect(() => {
     let animId: number;
+    let lastMediaTimeMs = 0;
+    let lastPerfAnchor = performance.now();
 
     const loop = () => {
-      const video = videoRef.current;
-      if (video && rendererRef.current) {
-        const currentMs = Math.round(video.currentTime * 1000);
+      const v = videoRef.current;
+      if (v && rendererRef.current) {
+        let currentMs: number;
+
+        if (v.paused) {
+          currentMs = Math.round(v.currentTime * 1000);
+          lastMediaTimeMs = currentMs;
+          lastPerfAnchor = performance.now();
+        } else {
+          const mediaMs = Math.round(v.currentTime * 1000);
+          // If video clock advanced, re-anchor interpolation timestamp
+          if (Math.abs(mediaMs - lastMediaTimeMs) > 10) {
+            lastMediaTimeMs = mediaMs;
+            lastPerfAnchor = performance.now();
+          }
+          // High-precision sub-frame interpolation between 24fps video ticks
+          const elapsed = (performance.now() - lastPerfAnchor) * v.playbackRate;
+          currentMs = Math.round(lastMediaTimeMs + Math.min(elapsed, 45));
+        }
+
         rendererRef.current.tick(currentMs);
 
-        if (onTimeUpdate) {
-          onTimeUpdate(currentMs);
+        if (onTimeUpdateProp) {
+          onTimeUpdateProp(currentMs);
         }
       }
       animId = requestAnimationFrame(loop);
@@ -94,7 +113,7 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [onTimeUpdate]);
+  }, [onTimeUpdateProp]);
 
   const compassArc = voiceBearing
     ? computeCompassArcPath(36, 36, 26, voiceBearing.bearingDeg, voiceBearing.spreadDeg)
