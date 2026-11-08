@@ -61,7 +61,9 @@
 
 .cwi-word {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: baseline;
+  white-space: pre;
   font-family: 'CwiRobotoFlex', 'Roboto Flex', 'CwiNotoSansKR', sans-serif;
   font-size: calc(4.8 * var(--cwi-vh, 1vh));
   line-height: 1.16;
@@ -80,24 +82,16 @@
     'YTUC' 712,
     'YTLC' 514,
     'YTFI' 738;
-
-  background-image: linear-gradient(
-    90deg,
-    var(--cwi-speaker-color, #4FC3F7) 0%,
-    var(--cwi-speaker-color, #4FC3F7) 48.75%,
-    var(--cwi-readahead-color, #B0B5BC) 51.25%,
-    var(--cwi-readahead-color, #B0B5BC) 100%
-  );
-  background-size: 200% 100%;
-  background-position: 100% 0%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-
   transform-origin: center bottom;
+}
+
+.cwi-char {
+  display: inline-block;
+  vertical-align: baseline;
+  transform-origin: center bottom;
+  will-change: transform, color;
+  color: var(--cwi-readahead-color, #B0B5BC);
   transform: translate3d(0, 0em, 0) scale3d(1, 1, 1);
-  will-change: transform, background-position;
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
 }

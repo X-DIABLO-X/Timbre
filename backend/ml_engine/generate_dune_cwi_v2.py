@@ -23,7 +23,10 @@ from backend.schemas.caption_spec import (
     WordToken,
     WorkAreaBox,
 )
-from backend.ml_engine.typography_math import compute_typography_spec
+from backend.ml_engine.typography_math import (
+    compute_audio_loudness_stats,
+    compute_typography_spec,
+)
 from backend.ml_engine.stream2_diarization import Lightweight512MBDiarizer
 from backend.ml_engine.stream3_prosody_stress import SpeakerPitchTracker
 
@@ -282,7 +285,8 @@ def run_pipeline(
     # PASS 2: Acoustic Word Alignment & Prosody Extraction (Fixes Issue #2)
     # -----------------------------------------------------------------------
     pitch_tracker = SpeakerPitchTracker()
-    specs_out: List[CaptionSpec] = []
+    raw_segment_data: List[Dict[str, object]] = []
+    all_prosody_rms: List[float] = []
 
     for idx, (seg, spk_id) in enumerate(zip(parsed_segments, speaker_ids)):
         seg_start_ms = int(seg["start_ms"])
@@ -292,10 +296,7 @@ def run_pipeline(
 
         if spk_id not in SPEAKER_PALETTE:
             spk_id = "SPK_01"
-        spk_meta = SPEAKER_PALETTE[spk_id]
 
-        # Extract non-speech events in brackets/parens e.g. [whispers], (wind howling)
-        events_out: List[NonSpeechEvent] = []
         raw_words = [w for w in text_clean.split() if w.strip()]
         if not raw_words:
             continue
@@ -308,7 +309,7 @@ def run_pipeline(
             sr=sr,
         )
 
-        word_tokens: List[WordToken] = []
+        word_raw_info: List[Dict[str, object]] = []
         for w_idx, (w_text, (w_start, w_end)) in enumerate(zip(raw_words, word_spans)):
             w_dur = max(80, w_end - w_start)
             ws_sample = max(0, int(((w_start - seg_start_ms) / 1000.0) * sr))
@@ -349,15 +350,75 @@ def run_pipeline(
                 prominence_score=prominence,
                 isolated_silence_hold=bool(isolated_hold),
             )
-            typo = compute_typography_spec(prosody=prosody, duration_ms=w_dur, intensity=1.0)
+            all_prosody_rms.append(rms_db)
 
+            word_raw_info.append(
+                {
+                    "word_id": f"w_{idx + 1:04d}_{w_idx + 1:02d}",
+                    "text": w_text,
+                    "start_ms": w_start,
+                    "end_ms": w_end,
+                    "duration_ms": w_dur,
+                    "prosody": prosody,
+                }
+            )
+
+        raw_segment_data.append(
+            {
+                "seg_id": f"seg_{idx + 1:04d}",
+                "start_ms": seg_start_ms,
+                "spk_id": spk_id,
+                "words": word_raw_info,
+            }
+        )
+
+    # Global Video-Level Adaptive Loudness Normalization
+    video_loudness = compute_audio_loudness_stats(all_prosody_rms)
+    print(
+        f"[CWI] Adaptive Audio Normalization calibrated: median={video_loudness.median_speech_rms_db} dBFS, "
+        f"whisper={video_loudness.whisper_rms_db} dBFS, shout={video_loudness.shout_rms_db} dBFS"
+    )
+
+    specs_out: List[CaptionSpec] = []
+    for seg_dict in raw_segment_data:
+        spk_id = str(seg_dict["spk_id"])
+        spk_meta = SPEAKER_PALETTE.get(spk_id, SPEAKER_PALETTE["SPK_01"])
+        word_tokens: List[WordToken] = []
+        events_out: List[NonSpeechEvent] = []
+
+        for w_info in seg_dict["words"]:  # type: ignore
+            prosody_m: ProsodyMetrics = w_info["prosody"]
+            w_dur_m: int = int(w_info["duration_ms"])
+
+            # Adapt prominence to global video loudness calibration
+            loud_ref = video_loudness.median_speech_rms_db - 8.0
+            loud_span = max(10.0, video_loudness.shout_rms_db - loud_ref)
+            loud_salience = max(0.0, min(1.0, (prosody_m.rms_db - loud_ref) / loud_span))
+            pitch_salience = max(0.0, min(1.0, abs(prosody_m.f0_word_hz - prosody_m.f0_speaker_median_hz) / 55.0))
+            prominence = round(min(1.0, 0.65 * loud_salience + 0.35 * pitch_salience), 4)
+
+            prosody_calibrated = ProsodyMetrics(
+                rms_db=prosody_m.rms_db,
+                f0_word_hz=prosody_m.f0_word_hz,
+                f0_speaker_median_hz=prosody_m.f0_speaker_median_hz,
+                prominence_score=prominence,
+                isolated_silence_hold=prosody_m.isolated_silence_hold,
+                pitch_contour_norm=prosody_m.pitch_contour_norm,
+            )
+
+            typo = compute_typography_spec(
+                prosody=prosody_calibrated,
+                duration_ms=w_dur_m,
+                intensity=1.0,
+                loudness_stats=video_loudness,
+            )
             word_tokens.append(
                 WordToken(
-                    word_id=f"w_{idx + 1:04d}_{w_idx + 1:02d}",
-                    text=w_text,
-                    start_ms=w_start,
-                    end_ms=w_end,
-                    duration_ms=w_dur,
+                    word_id=str(w_info["word_id"]),
+                    text=str(w_info["text"]),
+                    start_ms=int(w_info["start_ms"]),
+                    end_ms=int(w_info["end_ms"]),
+                    duration_ms=w_dur_m,
                     speaker=SpeakerInfo(
                         id=spk_id,
                         state="stable",
@@ -365,7 +426,7 @@ def run_pipeline(
                         compass_bearing_deg=float(spk_meta["bearing"]),  # type: ignore
                         compass_spread_deg=12.0,
                     ),
-                    prosody=prosody,
+                    prosody=prosody_calibrated,
                     typography=typo,
                 )
             )
@@ -373,11 +434,12 @@ def run_pipeline(
         specs_out.append(
             CaptionSpec(
                 schema_version="2.0-cwi",
-                segment_id=f"seg_{idx + 1:04d}",
+                segment_id=str(seg_dict["seg_id"]),
                 presentation_offset_ms=1750,
                 work_area_box=WorkAreaBox(bottom_pct=20.0, bg_opacity=0.90),
                 non_speech_events=events_out,
                 words=word_tokens,
+                loudness_stats=video_loudness,
             )
         )
 
@@ -391,5 +453,98 @@ def run_pipeline(
     return specs_out
 
 
+def recalibrate_cwi_json(json_path: str = "D:/dune/final_video.cwi.json") -> List[CaptionSpec]:
+    """
+    Applies per-video adaptive loudness normalization to an existing CWI JSON file.
+    Re-anchors conversational dialogue median to 1.00x, prevents quiet audio shrinking,
+    and scales genuine whispers to 0.72x readable floor and shouts to 1.35x-1.62x.
+    """
+    path = Path(json_path)
+    if not path.exists():
+        raise FileNotFoundError(f"CWI JSON file not found at {path}")
+
+    raw_specs = json.loads(path.read_text(encoding="utf-8"))
+    all_rms = [
+        float(w["prosody"]["rms_db"])
+        for s in raw_specs
+        for w in s.get("words", [])
+        if "prosody" in w and "rms_db" in w["prosody"]
+    ]
+
+    video_stats = compute_audio_loudness_stats(all_rms)
+    print(
+        f"[CWI] Calibrating {len(all_rms)} words with adaptive loudness: "
+        f"median={video_stats.median_speech_rms_db} dB, whisper={video_stats.whisper_rms_db} dB, shout={video_stats.shout_rms_db} dB"
+    )
+
+    loud_ref = video_stats.median_speech_rms_db - 8.0
+    loud_span = max(10.0, video_stats.shout_rms_db - loud_ref)
+
+    specs_out: List[CaptionSpec] = []
+    for s_dict in raw_specs:
+        updated_words: List[WordToken] = []
+        for w_dict in s_dict.get("words", []):
+            p_dict = w_dict["prosody"]
+            rms_db = float(p_dict["rms_db"])
+            f0_word = float(p_dict["f0_word_hz"])
+            f0_med = float(p_dict["f0_speaker_median_hz"])
+            dur_ms = int(w_dict["duration_ms"])
+
+            loud_salience = max(0.0, min(1.0, (rms_db - loud_ref) / loud_span))
+            pitch_salience = max(0.0, min(1.0, abs(f0_word - f0_med) / 55.0))
+            prominence = round(min(1.0, 0.65 * loud_salience + 0.35 * pitch_salience), 4)
+
+            prosody = ProsodyMetrics(
+                rms_db=rms_db,
+                f0_word_hz=f0_word,
+                f0_speaker_median_hz=f0_med,
+                prominence_score=prominence,
+                isolated_silence_hold=bool(p_dict.get("isolated_silence_hold", False)),
+                pitch_contour_norm=p_dict.get("pitch_contour_norm", None),
+            )
+
+            typo = compute_typography_spec(
+                prosody=prosody,
+                duration_ms=dur_ms,
+                intensity=1.0,
+                loudness_stats=video_stats,
+            )
+
+            spk_info = SpeakerInfo(**w_dict["speaker"])
+            token = WordToken(
+                word_id=str(w_dict["word_id"]),
+                text=str(w_dict["text"]),
+                is_disfluency=bool(w_dict.get("is_disfluency", False)),
+                start_ms=int(w_dict["start_ms"]),
+                end_ms=int(w_dict["end_ms"]),
+                duration_ms=dur_ms,
+                speaker=spk_info,
+                prosody=prosody,
+                typography=typo,
+            )
+            updated_words.append(token)
+
+        events = [NonSpeechEvent(**ev) for ev in s_dict.get("non_speech_events", [])]
+        spec = CaptionSpec(
+            schema_version="2.0-cwi",
+            segment_id=str(s_dict["segment_id"]),
+            stream_acoustic_time_ms=s_dict.get("stream_acoustic_time_ms"),
+            locale=str(s_dict.get("locale", "en")),
+            presentation_offset_ms=int(s_dict.get("presentation_offset_ms", 1750)),
+            work_area_box=WorkAreaBox(**s_dict.get("work_area_box", {"bottom_pct": 20.0, "bg_opacity": 0.90})),
+            non_speech_events=events,
+            words=updated_words,
+            loudness_stats=video_stats,
+        )
+        specs_out.append(spec)
+
+    path.write_text(
+        json.dumps([s.model_dump() for s in specs_out], indent=2),
+        encoding="utf-8",
+    )
+    print(f"[CWI] Saved adaptively recalibrated CWI specs ({len(specs_out)} segments) to {path}")
+    return specs_out
+
+
 if __name__ == "__main__":
-    run_pipeline()
+    recalibrate_cwi_json()

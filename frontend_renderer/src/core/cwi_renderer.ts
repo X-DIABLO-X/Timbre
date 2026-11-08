@@ -24,6 +24,7 @@ export class CwiRenderer {
   private specs: CaptionSpec[] = [];
   private activeSegmentId: string | null = null;
   private wordNodes: Map<string, HTMLSpanElement> = new Map();
+  private charNodes: Map<string, HTMLSpanElement[]> = new Map();
   private wordSpecs: Map<string, WordToken> = new Map();
   private wordPhases: Map<string, WordRenderPhase> = new Map();
   private lockedWordIds: Set<string> = new Set();
@@ -89,27 +90,30 @@ export class CwiRenderer {
       }
 
       .cwi-caption-box {
-        background-color: rgba(0, 0, 0, 0.90);
-        border-radius: 10px;
-        padding: 0.42em 0.92em;
-        max-width: 92%;
+        background-color: rgba(0, 0, 0, 0.86);
+        border-radius: 6px;
+        padding: 0.38em 0.88em;
+        max-width: 90%;
         max-height: 96%;
-        display: flex;
+        display: inline-flex;
         flex-wrap: wrap;
         align-items: baseline;
         justify-content: center;
-        gap: 0.24em 0.34em;
+        gap: 0.22em 0.34em;
         box-sizing: border-box;
-        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.60);
         contain: layout style;
       }
 
       .cwi-word {
         position: relative;
-        display: inline-block;
+        display: inline-flex;
+        align-items: baseline;
+        white-space: pre;
         font-family: 'Roboto Flex', system-ui, -apple-system, sans-serif;
         font-size: calc(4.8 * var(--cwi-vh, 1vh));
         line-height: 1.16;
+        vertical-align: baseline;
         font-optical-sizing: none;
         font-variation-settings:
           'wght' var(--cwi-wght, 400),
@@ -125,25 +129,16 @@ export class CwiRenderer {
           'YTUC' 712,
           'YTLC' 514,
           'YTFI' 738;
-
-        /* Soft 2.5% feather edge on the horizontal liquid wipe for cinema-grade smoothness */
-        background-image: linear-gradient(
-          90deg,
-          var(--cwi-speaker-color, #4FC3F7) 0%,
-          var(--cwi-speaker-color, #4FC3F7) 48.75%,
-          var(--cwi-readahead-color, #B0B5BC) 51.25%,
-          var(--cwi-readahead-color, #B0B5BC) 100%
-        );
-        background-size: 200% 100%;
-        background-position: 100% 0%;
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        color: transparent;
-
         transform-origin: center bottom;
+      }
+
+      .cwi-char {
+        display: inline-block;
+        vertical-align: baseline;
+        transform-origin: center bottom;
+        will-change: transform, color;
+        color: var(--cwi-readahead-color, #B0B5BC);
         transform: translate3d(0, 0em, 0) scale3d(1, 1, 1);
-        will-change: transform, background-position;
         backface-visibility: hidden;
         -webkit-font-smoothing: antialiased;
       }
@@ -292,7 +287,16 @@ export class CwiRenderer {
           continue;
         }
         if (existingEl.textContent !== word.text) {
-          existingEl.textContent = word.text;
+          existingEl.innerHTML = '';
+          const chars: HTMLSpanElement[] = [];
+          for (const ch of word.text) {
+            const charSpan = document.createElement('span');
+            charSpan.className = 'cwi-char';
+            charSpan.textContent = ch;
+            existingEl.appendChild(charSpan);
+            chars.push(charSpan);
+          }
+          this.charNodes.set(word.word_id, chars);
         }
         bindWordCSSVariables(existingEl, word, currentTimeMs, this.profile);
         this.wordSpecs.set(word.word_id, word);
@@ -303,7 +307,16 @@ export class CwiRenderer {
       span.className = 'cwi-word';
       span.dataset.wordId = word.word_id;
       span.dataset.locale = spec.locale || 'en';
-      span.textContent = word.text;
+
+      const chars: HTMLSpanElement[] = [];
+      for (const ch of word.text) {
+        const charSpan = document.createElement('span');
+        charSpan.className = 'cwi-char';
+        charSpan.textContent = ch;
+        span.appendChild(charSpan);
+        chars.push(charSpan);
+      }
+      this.charNodes.set(word.word_id, chars);
 
       bindWordCSSVariables(span, word, currentTimeMs, this.profile);
       this.captionBoxEl.appendChild(span);
@@ -317,6 +330,8 @@ export class CwiRenderer {
    * High-frequency 60-120 FPS animation tick driven directly by <video>.currentTime * 1000.
    * Only mutates the 1-2 words actively being spoken in the current frame;
    * pre-onset and post-onset words are cached and skipped for zero DOM layout thrashing.
+   * Wave kinematics: continuous traveling wave packet propagating left-to-right through
+   * individual characters anchored to the bottom baseline.
    */
   public tick(currentTimeMs: number): void {
     const targetSpec = this.findActiveSpecForTime(currentTimeMs);
@@ -334,20 +349,23 @@ export class CwiRenderer {
     const k = Math.max(0.0, Math.min(1.0, this.profile.intensity));
     const enableColor = this.profile.enableColorTurn;
     const enablePop = this.profile.enablePop;
-    const enableCrest = this.profile.enableCrest;
     const enableHold = this.profile.enableHold;
 
     for (const [wordId, word] of this.wordSpecs.entries()) {
       const el = this.wordNodes.get(wordId);
       if (!el) continue;
 
+      const chars = this.charNodes.get(wordId) || [];
       const prevPhase = this.wordPhases.get(wordId);
 
       // STATE 1: Read-Ahead Layer (currentTimeMs < word.start_ms)
       if (currentTimeMs < word.start_ms) {
+        this.lockedWordIds.delete(wordId);
         if (prevPhase !== 'pre') {
-          el.style.backgroundPosition = enableColor ? '100% 0%' : '0% 0%';
-          el.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          for (let i = 0; i < chars.length; i++) {
+            chars[i].style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+            chars[i].style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          }
           this.wordPhases.set(wordId, 'pre');
         }
         continue;
@@ -359,55 +377,52 @@ export class CwiRenderer {
       }
 
       const t = word.typography;
-      // Fixed: Words never shrink below 1.0 unprompted; normal speech rests at 1.0x scale
-      const crestScaleEff = enableCrest ? Math.max(1.0, 1.0 + k * (t.crest_scale - 1.0)) : 1.0;
-      const sSustain = crestScaleEff;
 
       // STATE 3: Post-Onset / Completed Word (currentTimeMs >= word.end_ms)
       if (currentTimeMs >= word.end_ms) {
         if (prevPhase !== 'post') {
-          el.style.backgroundPosition = '0% 0%';
-          el.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          for (let i = 0; i < chars.length; i++) {
+            chars[i].style.color = enableColor ? 'var(--cwi-speaker-color, #4FC3F7)' : '#FFFFFF';
+            chars[i].style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          }
           this.wordPhases.set(wordId, 'post');
         }
         continue;
       }
 
-      // STATE 2: Active Word Being Spoken (word.start_ms <= currentTimeMs < word.end_ms)
+      // STATE 2: Active Word - Traveling Wave Packet across Characters (00:52 Synchronization)
       this.wordPhases.set(wordId, 'active');
       const dur = Math.max(80, word.duration_ms);
       const progress = Math.max(0.0, Math.min(1.0, (currentTimeMs - word.start_ms) / dur));
-
-      // Channel 1: Smooth horizontal Colour Turn wipe
-      if (enableColor) {
-        const wipePos = Math.max(0.0, (1.0 - progress) * 100.0);
-        el.style.backgroundPosition = `${wipePos.toFixed(2)}% 0%`;
-      } else {
-        el.style.backgroundPosition = '0% 0%';
-      }
-
-      // Channels 2 & 3: Decibel-envelope crest scaling and 1.15x Pop settle to standard size
-      const popMult = enablePop ? 1.0 + k * (t.pop_scale - 1.0) : 1.0;
-      const sPeak = popMult * crestScaleEff;
-
-      let scaleNow: number;
-      if (progress <= 0.22) {
-        const u = CwiRenderer.smoothstep(0.0, 0.22, progress);
-        scaleNow = 1.0 + u * (sPeak - 1.0);
-      } else if (progress <= 0.55) {
-        const u = CwiRenderer.smoothstep(0.22, 0.55, progress);
-        scaleNow = sPeak + u * (sSustain - sPeak);
-      } else {
-        scaleNow = sSustain;
-      }
-
-      // Channel 5: Smooth Sinusoidal Vertical Hold Lift (-0.525em)
+      const numChars = chars.length;
+      const sPeak = 1.0 + k * Math.max(0.15, (t.crest_scale * t.pop_scale - 1.0));
       const holdPeakEm = enableHold ? k * t.hold_lift_em : 0.0;
-      const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI);
+      const sigma = Math.max(0.18, 1.2 / Math.max(1, numChars));
 
-      const sStr = scaleNow.toFixed(4);
-      const yStr = yLiftEm.toFixed(4);
-      el.style.transform = `translate3d(0, ${yStr}em, 0) scale3d(${sStr}, ${sStr}, 1)`;
+      for (let i = 0; i < numChars; i++) {
+        const charEl = chars[i];
+        const tau = (i + 0.5) / Math.max(1, numChars);
+        const dist = tau - progress;
+        const wave = Math.exp(-(dist * dist) / (2.0 * sigma * sigma));
+
+        const ch = charEl.textContent || '';
+        const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
+
+        const charScale = isPunct ? 1.0 : (enablePop ? (1.0 + (sPeak - 1.0) * wave) : 1.0);
+        const yLiftEm = enableHold ? (holdPeakEm * Math.sin(progress * Math.PI) * wave) : 0.0;
+
+        charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
+
+        if (enableColor) {
+          if (tau <= progress + 0.4 / Math.max(1, numChars)) {
+            charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
+          } else {
+            charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+          }
+        } else {
+          charEl.style.color = '#FFFFFF';
+        }
+      }
     }
   }
 
@@ -415,6 +430,7 @@ export class CwiRenderer {
     this.captionBoxEl.innerHTML = '';
     this.captionBoxEl.style.display = 'none';
     this.activeSegmentId = null;
+    this.charNodes.clear();
     this.wordNodes.clear();
     this.wordSpecs.clear();
     this.wordPhases.clear();

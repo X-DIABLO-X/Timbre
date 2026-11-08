@@ -5,6 +5,7 @@ import numpy as np
 
 from backend.config import EngineConfig
 from backend.schemas.caption_spec import (
+    AudioLoudnessStats,
     CaptionSpec,
     NonSpeechEvent,
     ProsodyMetrics,
@@ -82,6 +83,7 @@ class TimestampJoiner:
         compass_state: Optional[Dict[str, float]] = None,
         intensity: float = 1.0,
         is_safari: bool = False,
+        loudness_stats: Optional[AudioLoudnessStats] = None,
     ) -> CaptionSpec:
         word_tokens: List[WordToken] = []
         bearing = compass_state.get("bearing_deg") if compass_state else None
@@ -100,6 +102,7 @@ class TimestampJoiner:
                 is_safari=is_safari,
                 locale=locale,
                 is_offscreen_or_sfx=False,
+                loudness_stats=loudness_stats,
             )
 
             word_tokens.append(
@@ -131,6 +134,7 @@ class TimestampJoiner:
             work_area_box=WorkAreaBox(bottom_pct=20.0, bg_opacity=0.90),
             non_speech_events=events,
             words=word_tokens,
+            loudness_stats=loudness_stats,
         )
 
     def build_events_only_spec(

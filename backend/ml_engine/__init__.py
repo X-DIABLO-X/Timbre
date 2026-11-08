@@ -1,5 +1,7 @@
 from backend.ml_engine.typography_math import (
     compute_typography_spec,
+    compute_audio_loudness_stats,
+    DEFAULT_LOUDNESS_STATS,
     clip,
     SAMPLE_RATE_HZ,
     PROSODY_WIN_MS,
@@ -33,6 +35,8 @@ from backend.ml_engine.orchestrator import ParallelAudioPipeline
 
 __all__ = [
     "compute_typography_spec",
+    "compute_audio_loudness_stats",
+    "DEFAULT_LOUDNESS_STATS",
     "clip",
     "SAMPLE_RATE_HZ",
     "PROSODY_WIN_MS",

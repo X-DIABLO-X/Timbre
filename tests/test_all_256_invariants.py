@@ -12,6 +12,7 @@ import torch.nn as nn
 
 try:
     from backend.schemas.caption_spec import (
+        AudioLoudnessStats,
         CaptionSpec,
         NonSpeechEvent,
         ProsodyMetrics,
@@ -20,7 +21,11 @@ try:
         WordToken,
         WorkAreaBox,
     )
-    from backend.ml_engine.typography_math import compute_typography_spec
+    from backend.ml_engine.typography_math import (
+        compute_typography_spec,
+        compute_audio_loudness_stats,
+        DEFAULT_LOUDNESS_STATS,
+    )
     from backend.ml_engine.stream1_asr import (
         RawWordAlignment,
         clamp_pause_boundaries,
@@ -99,6 +104,29 @@ except ImportError:
     def clip(val: float, low: float, high: float) -> float:
         return max(low, min(high, val))
 
+    class AudioLoudnessStats(BaseModel):
+        floor_db: float = Field(default=-42.0, ge=-100.0, le=0.0)
+        conversational_median_db: float = Field(default=-20.0, ge=-100.0, le=0.0)
+        ceiling_db: float = Field(default=-4.0, ge=-100.0, le=0.0)
+        deadband_db: float = Field(default=2.0, ge=0.0, le=12.0)
+        p15_rms_db: Optional[float] = None
+        p85_rms_db: Optional[float] = None
+        p95_rms_db: Optional[float] = None
+
+        @property
+        def median_speech_rms_db(self) -> float:
+            return self.conversational_median_db
+
+        @property
+        def whisper_rms_db(self) -> float:
+            return self.floor_db
+
+        @property
+        def shout_rms_db(self) -> float:
+            return self.ceiling_db
+
+    DEFAULT_LOUDNESS_STATS = AudioLoudnessStats()
+
     def compute_typography_spec(
         prosody: ProsodyMetrics,
         duration_ms: int,
@@ -106,9 +134,28 @@ except ImportError:
         is_safari: bool = False,
         locale: str = "en",
         is_offscreen_or_sfx: bool = False,
+        loudness_stats: Optional[AudioLoudnessStats] = None,
     ) -> TypographySpec:
         intensity = clip(intensity, 0.0, 1.0)
-        alpha_loud = clip((prosody.rms_db + 42.0) / 38.0, 0.0, 1.0)
+        stats = loudness_stats or DEFAULT_LOUDNESS_STATS
+        med_db = stats.median_speech_rms_db
+        whisper_db = stats.whisper_rms_db
+        shout_db = stats.shout_rms_db
+        deadband = max(0.0, stats.deadband_db)
+
+        ALPHA_MEDIAN = 0.58 / 0.85
+
+        if prosody.rms_db < med_db - deadband:
+            span_quiet = max(1.0, (med_db - deadband) - whisper_db)
+            ratio = clip((prosody.rms_db - whisper_db) / span_quiet, 0.0, 1.0)
+            alpha_loud = ALPHA_MEDIAN * ratio
+        elif prosody.rms_db > med_db + deadband:
+            span_loud = max(1.0, shout_db - (med_db + deadband))
+            ratio = clip((prosody.rms_db - (med_db + deadband)) / span_loud, 0.0, 1.0)
+            alpha_loud = ALPHA_MEDIAN + (1.0 - ALPHA_MEDIAN) * ratio
+        else:
+            alpha_loud = ALPHA_MEDIAN
+
         alpha_eff = clip(0.85 * alpha_loud + 0.15 * prosody.prominence_score, 0.0, 1.0)
 
         if alpha_eff <= 0.58:

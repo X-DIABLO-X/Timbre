@@ -1,4 +1,5 @@
 from backend.schemas.caption_spec import (
+    AudioLoudnessStats,
     CaptionSpec,
     NonSpeechEvent,
     NonSpeechEventLabel,
@@ -12,6 +13,7 @@ from backend.schemas.caption_spec import (
 )
 
 __all__ = [
+    "AudioLoudnessStats",
     "CaptionSpec",
     "NonSpeechEvent",
     "NonSpeechEventLabel",

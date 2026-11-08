@@ -6,6 +6,7 @@ let shadowRoot = null;
 let captionBoxEl = null;
 let activeVideo = null;
 let wordNodes = new Map();
+let charNodes = new Map();
 let wordSpecs = new Map();
 let wordPhases = new Map();
 let lockedWordIds = new Set();
@@ -78,7 +79,18 @@ function ingestSpec(spec) {
     if (wordNodes.has(w.word_id)) {
       if (!lockedWordIds.has(w.word_id)) {
         const el = wordNodes.get(w.word_id);
-        el.textContent = w.text;
+        if (el.textContent !== w.text) {
+          el.innerHTML = '';
+          const chars = [];
+          for (const ch of w.text) {
+            const charSpan = document.createElement('span');
+            charSpan.className = 'cwi-char';
+            charSpan.textContent = ch;
+            el.appendChild(charSpan);
+            chars.push(charSpan);
+          }
+          charNodes.set(w.word_id, chars);
+        }
         el.style.setProperty('--cwi-speaker-color', w.speaker.color_hex);
         wordSpecs.set(w.word_id, w);
       }
@@ -88,7 +100,16 @@ function ingestSpec(spec) {
     const span = document.createElement('span');
     span.className = 'cwi-word';
     span.dataset.locale = spec.locale || 'en';
-    span.textContent = w.text;
+
+    const chars = [];
+    for (const ch of w.text) {
+      const charSpan = document.createElement('span');
+      charSpan.className = 'cwi-char';
+      charSpan.textContent = ch;
+      span.appendChild(charSpan);
+      chars.push(charSpan);
+    }
+    charNodes.set(w.word_id, chars);
 
     const t = w.typography;
     span.style.setProperty('--cwi-speaker-color', w.speaker.color_hex);
@@ -115,16 +136,23 @@ function tickOverlay() {
       if (currentMs > w.end_ms + 4000) {
         el.remove();
         wordNodes.delete(wordId);
+        charNodes.delete(wordId);
         wordSpecs.delete(wordId);
         wordPhases.delete(wordId);
         continue;
       }
 
+      const chars = charNodes.get(wordId) || [];
       const prevPhase = wordPhases.get(wordId);
+
+      // STATE 1: Read-Ahead Layer (currentMs < w.start_ms)
       if (currentMs < w.start_ms) {
+        lockedWordIds.delete(wordId);
         if (prevPhase !== 'pre') {
-          el.style.backgroundPosition = '100% 0%';
-          el.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          for (let i = 0; i < chars.length; i++) {
+            chars[i].style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+            chars[i].style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          }
           wordPhases.set(wordId, 'pre');
         }
         continue;
@@ -132,35 +160,48 @@ function tickOverlay() {
 
       lockedWordIds.add(wordId);
       const t = w.typography;
-      // Fixed: Words never shrink below 1.0 unprompted; normal speech rests at 1.0x scale
-      const crestScaleEff = Math.max(1.0, 1.0 + k * (t.crest_scale - 1.0));
-      const sSustain = crestScaleEff;
 
+      // STATE 3: Post-Onset / Completed Word (currentMs >= w.end_ms)
       if (currentMs >= w.end_ms) {
         if (prevPhase !== 'post') {
-          el.style.backgroundPosition = '0% 0%';
-          el.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          for (let i = 0; i < chars.length; i++) {
+            chars[i].style.color = 'var(--cwi-speaker-color, #4FC3F7)';
+            chars[i].style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          }
           wordPhases.set(wordId, 'post');
         }
         continue;
       }
 
+      // STATE 2: Active Word - Traveling Wave Packet across Characters (00:52 Synchronization)
       wordPhases.set(wordId, 'active');
       const dur = Math.max(80, w.duration_ms);
       const progress = Math.max(0.0, Math.min(1.0, (currentMs - w.start_ms) / dur));
-      el.style.backgroundPosition = `${((1.0 - progress) * 100.0).toFixed(2)}% 0%`;
+      const numChars = chars.length;
+      const sPeak = 1.0 + k * Math.max(0.15, (t.crest_scale * t.pop_scale - 1.0));
+      const holdPeakEm = k * (t.hold_lift_em || 0.0);
+      const sigma = Math.max(0.18, 1.2 / Math.max(1, numChars));
 
-      const sPeak = (1.0 + k * (t.pop_scale - 1.0)) * crestScaleEff;
-      let scaleNow;
-      if (progress <= 0.22) {
-        scaleNow = 1.0 + smoothstep(0.0, 0.22, progress) * (sPeak - 1.0);
-      } else if (progress <= 0.55) {
-        scaleNow = sPeak + smoothstep(0.22, 0.55, progress) * (sSustain - sPeak);
-      } else {
-        scaleNow = sSustain;
+      for (let i = 0; i < numChars; i++) {
+        const charEl = chars[i];
+        const tau = (i + 0.5) / Math.max(1, numChars);
+        const dist = tau - progress;
+        const wave = Math.exp(-(dist * dist) / (2.0 * sigma * sigma));
+
+        const ch = charEl.textContent || '';
+        const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
+
+        const charScale = isPunct ? 1.0 : (1.0 + (sPeak - 1.0) * wave);
+        const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI) * wave;
+
+        charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
+
+        if (tau <= progress + 0.4 / Math.max(1, numChars)) {
+          charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
+        } else {
+          charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+        }
       }
-      const yLiftEm = k * t.hold_lift_em * Math.sin(progress * Math.PI);
-      el.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${scaleNow.toFixed(4)}, ${scaleNow.toFixed(4)}, 1)`;
     }
   }
   requestAnimationFrame(tickOverlay);

@@ -6,8 +6,46 @@ import librosa
 import torch
 
 from backend.config import EngineConfig
-from backend.schemas.caption_spec import ProsodyMetrics
+from backend.schemas.caption_spec import AudioLoudnessStats, ProsodyMetrics
 from backend.ml_engine.stream1_asr import RawWordAlignment
+
+
+class SpeechLoudnessTracker:
+    # Tracks running speech RMS energy to adaptively calibrate prominence and loudness thresholds.
+    def __init__(
+        self,
+        max_history_words: int = 500,
+        default_median_db: float = -20.0,
+        default_floor_db: float = -42.0,
+        default_ceiling_db: float = -4.0,
+    ):
+        self.history: Deque[float] = deque(maxlen=max_history_words)
+        self.default_median_db = default_median_db
+        self.default_floor_db = default_floor_db
+        self.default_ceiling_db = default_ceiling_db
+
+    def update(self, rms_db: float) -> None:
+        if rms_db > -55.0:
+            self.history.append(float(rms_db))
+
+    def get_stats(self) -> AudioLoudnessStats:
+        if len(self.history) < 5:
+            return AudioLoudnessStats(
+                floor_db=self.default_floor_db,
+                conversational_median_db=self.default_median_db,
+                ceiling_db=self.default_ceiling_db,
+            )
+        arr = np.array(self.history, dtype=np.float32)
+        med = float(np.median(arr))
+        p15 = float(np.percentile(arr, 15))
+        p95 = float(np.percentile(arr, 95))
+        whisper = min(p15, med - 6.0)
+        shout = max(p95, med + 8.0)
+        return AudioLoudnessStats(
+            floor_db=round(whisper, 2),
+            conversational_median_db=round(med, 2),
+            ceiling_db=round(shout, 2),
+        )
 
 
 class SpeakerPitchTracker:
@@ -39,6 +77,7 @@ class ProsodyAndStressExtractor:
     def __init__(self, config: EngineConfig):
         self.config = config
         self.pitch_tracker = SpeakerPitchTracker()
+        self.loudness_tracker = SpeechLoudnessTracker()
         self.whistress_head = None
         self._load_whistress_head()
 
@@ -129,6 +168,9 @@ class ProsodyAndStressExtractor:
             else:
                 contour = [0.5]
 
+            self.loudness_tracker.update(word_rms_db)
+            loud_stats = self.loudness_tracker.get_stats()
+
             # Prominence score: use WhiStress Layer-9 head if tensor available, else acoustic salience
             if self.whistress_head is not None and l9_hidden is not None:
                 with torch.no_grad():
@@ -138,8 +180,10 @@ class ProsodyAndStressExtractor:
                     probs = torch.sigmoid(logits).squeeze(-1).cpu().numpy()
                     prominence = float(probs[0, min(idx, probs.shape[1] - 1)])
             else:
-                # Acoustic prominence combining loudness above -22dBFS and pitch excursion
-                loud_salience = max(0.0, min(1.0, (word_rms_db + 28.0) / 20.0))
+                # Acoustic prominence combining loudness above conversational baseline and pitch excursion
+                loud_ref = loud_stats.conversational_median_db - 8.0
+                loud_span = max(10.0, loud_stats.ceiling_db - loud_ref)
+                loud_salience = max(0.0, min(1.0, (word_rms_db - loud_ref) / loud_span))
                 pitch_salience = max(0.0, min(1.0, abs(word_f0_hz - spk_median_f0) / 60.0))
                 prominence = round(0.65 * loud_salience + 0.35 * pitch_salience, 4)
 

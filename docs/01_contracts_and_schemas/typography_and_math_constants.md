@@ -38,14 +38,19 @@ Every constant below is fixed across the Python backend (`backend/ml_engine/typo
 
 ## 2. Exact Mathematical Formulas (`backend/ml_engine/typography_math.py`)
 
-### 2.1 Channel 3 — Crest (RMS Loudness & Prominence $\to$ Scale Multiplier)
+### 2.1 Channel 3 — Crest (Adaptive Acoustic Normalization & Prominence $\to$ Scale Multiplier)
 
-Let $E_{\text{rms\_db}} \in [-60.0, 0.0]\text{ dBFS}$ be the word's mean-pooled RMS energy in decibels, $E_{\text{spk\_norm\_db}}$ be the speaker's running conversational baseline RMS (default `-20.0 dBFS`, whisper floor `-42.0 dBFS`, shout ceiling `-4.0 dBFS`), and $P \in [0.0, 1.0]$ be the **[WhiStress](https://www.isca-archive.org/interspeech_2025/yosha25_interspeech.pdf)** Layer-9 token prominence score.
+Let $E_{\text{rms\_db}} \in [-60.0, 0.0]\text{ dBFS}$ be the word's mean-pooled RMS energy in decibels, $E_{\text{median}}$ be the video's calibrated conversational dialogue median (default `-20.0 dBFS`, measured `-32.5 dBFS` on cinematic mixes like *Dune*), $E_{\text{whisper}}$ be the 15th percentile whisper floor (default `-42.0 dBFS`), $E_{\text{shout}}$ be the 95th percentile shout ceiling (default `-4.0 dBFS`), and $P \in [0.0, 1.0]$ be the **[WhiStress](https://www.isca-archive.org/interspeech_2025/yosha25_interspeech.pdf)** Layer-9 token prominence score.
 
-1. **Normalized Loudness Index ($\alpha_{\text{loud}} \in [0.0, 1.0]$):**
-   $$\alpha_{\text{loud}} = \text{clip}\left( \frac{E_{\text{rms\_db}} - (-42.0)}{(-4.0) - (-42.0)}, \; 0.0, \; 1.0 \right) = \text{clip}\left( \frac{E_{\text{rms\_db}} + 42.0}{38.0}, \; 0.0, \; 1.0 \right)$$
+1. **Adaptive Loudness Normalization Index ($\alpha_{\text{loud}} \in [0.0, 1.0]$):**
+   - Anchors conversational dialogue median $E_{\text{median}}$ (within $\pm \Delta_{\text{deadband}}$, default `2.0 dB`) to $\alpha_{\text{loud}} = \frac{0.58}{0.85} \approx 0.682$, ensuring normal conversational speech ($P = 0.0$) maps cleanly to $\alpha_{\text{eff}} = 0.58 \implies \text{raw\_crest} = 1.00\text{x}$:
+   $$\alpha_{\text{loud}} = \begin{cases}
+   \frac{0.58}{0.85} \cdot \text{clip}\left(\frac{E_{\text{rms\_db}} - E_{\text{whisper}}}{(E_{\text{median}} - \Delta_{\text{deadband}}) - E_{\text{whisper}}}, 0.0, 1.0\right) & \text{if } E_{\text{rms\_db}} < E_{\text{median}} - \Delta_{\text{deadband}} \\[8pt]
+   \frac{0.58}{0.85} & \text{if } |E_{\text{rms\_db}} - E_{\text{median}}| \le \Delta_{\text{deadband}} \\[8pt]
+   \frac{0.58}{0.85} + \left(1.0 - \frac{0.58}{0.85}\right) \cdot \text{clip}\left(\frac{E_{\text{rms\_db}} - (E_{\text{median}} + \Delta_{\text{deadband}})}{E_{\text{shout}} - (E_{\text{median}} + \Delta_{\text{deadband}})}, 0.0, 1.0\right) & \text{if } E_{\text{rms\_db}} > E_{\text{median}} + \Delta_{\text{deadband}}
+   \end{cases}$$
 2. **Prominence-Boosted Loudness ($\alpha_{\text{eff}} \in [0.0, 1.0]$):**
-   - Conversational speech (`-20.0 dBFS`, $P = 0.0$) maps to `1.00x` (`5%` of screen height).
+   - Conversational speech ($E_{\text{rms\_db}} \approx E_{\text{median}}$, $P = 0.0$) maps to `1.00x` (`5%` of screen height).
    - Piecewise linear mapping from `[0.0, 0.58, 1.0]` onto `[0.72, 1.00, 1.62]`, fused with `15%` Layer-9 prominence boost:
    $$\alpha_{\text{eff}} = \text{clip}\left( 0.85 \cdot \alpha_{\text{loud}} + 0.15 \cdot P, \; 0.0, \; 1.0 \right)$$
    $$\text{crest\_scale} = \begin{cases} 0.72 + \frac{\alpha_{\text{eff}}}{0.58} \cdot (1.00 - 0.72) & \text{if } \alpha_{\text{eff}} \le 0.58 \\[6pt] 1.00 + \frac{\alpha_{\text{eff}} - 0.58}{1.0 - 0.58} \cdot (1.62 - 1.00) & \text{if } \alpha_{\text{eff}} > 0.58 \end{cases}$$

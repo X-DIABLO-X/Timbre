@@ -1,8 +1,8 @@
 import math
-from typing import Optional
+from typing import Optional, Sequence
 import numpy as np
 
-from backend.schemas.caption_spec import ProsodyMetrics, TypographySpec
+from backend.schemas.caption_spec import AudioLoudnessStats, ProsodyMetrics, TypographySpec
 
 # Table of Mathematical Constants & Clamps
 SAMPLE_RATE_HZ: int = 16000
@@ -30,9 +30,52 @@ WDTH_MAX: int = 151
 HOLD_LIFT_EM: float = -0.525
 ISOLATED_SILENCE_MIN_MS: int = 250
 
+# Conversational Loudness Baseline Clamps & Normalization Defaults
+DEFAULT_MEDIAN_SPEECH_RMS_DB: float = -20.0
+DEFAULT_WHISPER_RMS_DB: float = -42.0
+DEFAULT_SHOUT_RMS_DB: float = -4.0
+DEFAULT_CONVERSATIONAL_DEADBAND_DB: float = 2.0
+DEFAULT_LOUDNESS_STATS: AudioLoudnessStats = AudioLoudnessStats(
+    median_speech_rms_db=DEFAULT_MEDIAN_SPEECH_RMS_DB,
+    whisper_rms_db=DEFAULT_WHISPER_RMS_DB,
+    shout_rms_db=DEFAULT_SHOUT_RMS_DB,
+    deadband_db=DEFAULT_CONVERSATIONAL_DEADBAND_DB,
+)
+
 
 def clip(val: float, low: float, high: float) -> float:
     return max(low, min(high, val))
+
+
+def compute_audio_loudness_stats(
+    rms_values: Sequence[float],
+    silence_floor_db: float = -55.0,
+    deadband_db: float = 2.0,
+) -> AudioLoudnessStats:
+    """
+    Computes speech/dialogue RMS statistics across an entire video or audio track.
+    Anchors conversational speech median to 1.00x crest scale, with 15th percentile
+    defining the whisper floor (0.72x) and 95th percentile defining the shout ceiling (1.62x).
+    """
+    valid = [float(r) for r in rms_values if r > silence_floor_db]
+    if not valid:
+        return DEFAULT_LOUDNESS_STATS
+    arr = np.array(valid, dtype=np.float32)
+    med = float(np.median(arr))
+    p15 = float(np.percentile(arr, 15))
+    p85 = float(np.percentile(arr, 85))
+    p95 = float(np.percentile(arr, 95))
+    whisper = min(p15, med - 6.0)
+    shout = max(p95, med + 8.0)
+    return AudioLoudnessStats(
+        median_speech_rms_db=round(med, 2),
+        whisper_rms_db=round(whisper, 2),
+        shout_rms_db=round(shout, 2),
+        deadband_db=round(deadband_db, 2),
+        p15_rms_db=round(p15, 2),
+        p85_rms_db=round(p85, 2),
+        p95_rms_db=round(p95, 2),
+    )
 
 
 def compute_typography_spec(
@@ -42,12 +85,35 @@ def compute_typography_spec(
     is_safari: bool = False,
     locale: str = "en",
     is_offscreen_or_sfx: bool = False,
+    loudness_stats: Optional[AudioLoudnessStats] = None,
 ) -> TypographySpec:
     # Deterministic mapping from physical voice measurements to the 5 Kinetic Channels
     intensity = clip(intensity, 0.0, 1.0)
 
     # 1. Channel 3: Crest (Scale 0.72x to 1.62x; 3% to 12% screen height; 5% normal = 1.0x)
-    alpha_loud = clip((prosody.rms_db + 42.0) / 38.0, 0.0, 1.0)
+    # Per-video adaptive normalization anchors conversational speech to raw_crest = 1.00x,
+    # preventing dialogue in quieter mixes (e.g. Dune at -33 dBFS) from shrinking to whispers.
+    stats = loudness_stats or DEFAULT_LOUDNESS_STATS
+    med_db = stats.median_speech_rms_db
+    whisper_db = stats.whisper_rms_db
+    shout_db = stats.shout_rms_db
+    deadband = max(0.0, stats.deadband_db)
+
+    # Conversational baseline anchor: at normal dialogue volume with baseline prominence,
+    # alpha_eff == 0.58 so raw_crest == 1.00 (neither shrunken to whisper nor blown up to shout).
+    ALPHA_MEDIAN = 0.58 / 0.85  # ~0.68235
+
+    if prosody.rms_db < med_db - deadband:
+        span_quiet = max(1.0, (med_db - deadband) - whisper_db)
+        ratio = clip((prosody.rms_db - whisper_db) / span_quiet, 0.0, 1.0)
+        alpha_loud = ALPHA_MEDIAN * ratio
+    elif prosody.rms_db > med_db + deadband:
+        span_loud = max(1.0, shout_db - (med_db + deadband))
+        ratio = clip((prosody.rms_db - (med_db + deadband)) / span_loud, 0.0, 1.0)
+        alpha_loud = ALPHA_MEDIAN + (1.0 - ALPHA_MEDIAN) * ratio
+    else:
+        alpha_loud = ALPHA_MEDIAN
+
     alpha_eff = clip(0.85 * alpha_loud + 0.15 * prosody.prominence_score, 0.0, 1.0)
 
     if alpha_eff <= 0.58:
