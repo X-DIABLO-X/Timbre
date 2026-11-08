@@ -39,4 +39,7 @@ dist-ssr/
 Thumbs.db
 
 timbre_voice_color_and_sync_fixes/
+scratch/
+scratch_research.py
+
 

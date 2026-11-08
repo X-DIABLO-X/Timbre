@@ -1,0 +1,1830 @@
+{
+  "title": "Dune Part 1 - Character Anchor Embeddings & Scene Turn Boundary Ground Truth",
+  "total_subtitle_cards": 1323,
+  "characters": {
+    "Chani": {
+      "character": "Chani",
+      "actor": "Zendaya",
+      "role": "Fremen warrior / Paul's prophetic love interest / Opening narrator",
+      "primary_spk_id": "SPK_00",
+      "palette_color": "#4FC3F7",
+      "compass_bearing": -30.0,
+      "primary_seed_anchor": {
+        "label": "Opening Narration - Desert Beauty & Spice",
+        "start_card": 1,
+        "end_card": 4,
+        "card_span": "1-4",
+        "start_ms": 55622,
+        "end_ms": 68501,
+        "start_timestamp": "00:00:55,622",
+        "end_timestamp": "00:01:08,501",
+        "duration_s": 12.879,
+        "rms_dbfs": -31.19,
+        "peak_dbfs": -13.38,
+        "snr_db": 19.92,
+        "transcript": "My planet Arrakis is so beautiful when the sun is low. Rolling over the sands... you can see spice in the air.",
+        "rationale": "Opening soliloquy over sweeping Arrakis dunes with minimal ambient score, close-mic vocal presence, and zero cross-talk. High SNR (~19.9 dB)."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Crysknife Presentation to Paul",
+          "start_card": 1281,
+          "end_card": 1286,
+          "card_span": "1281-1286",
+          "start_ms": 8376134,
+          "end_ms": 8408299,
+          "start_timestamp": "02:19:36,134",
+          "end_timestamp": "02:20:08,299",
+          "duration_s": 32.165,
+          "rms_dbfs": -39.61,
+          "peak_dbfs": -16.78,
+          "snr_db": 14.63,
+          "transcript": "I don't believe you're the Lisan al-Gaib. But I want you to die with honour. This crysknife was given to me by my great aunt. It's made from a tooth of Shai-Hulud. The great sandworm. This will be a great honour, for you to die holding it.",
+          "rationale": "Quiet, reverent dialogue in rock shelter handing Paul her aunt's crysknife before the Jamis duel. Intimate whispered vocal delivery."
+        },
+        {
+          "label": "Desert Prophetic Vision",
+          "start_card": 1177,
+          "end_card": 1180,
+          "card_span": "1177-1180",
+          "start_ms": 7616174,
+          "end_ms": 7631690,
+          "start_timestamp": "02:06:56,174",
+          "end_timestamp": "02:07:11,690",
+          "duration_s": 15.516,
+          "rms_dbfs": -34.63,
+          "peak_dbfs": -16.42,
+          "snr_db": 8.96,
+          "transcript": "A friend will help you. Follow the friend. You have much to learn. And I will show you the ways of the desert.",
+          "rationale": "Soft, clear poetic monologue in Paul's vision ('A friend will help you. Follow the friend...')."
+        },
+        {
+          "label": "Final Movie Dialogue",
+          "start_card": 1323,
+          "end_card": 1323,
+          "card_span": "1323",
+          "start_ms": 8813704,
+          "end_ms": 8815406,
+          "start_timestamp": "02:26:53,704",
+          "end_timestamp": "02:26:55,406",
+          "duration_s": 1.702,
+          "rms_dbfs": -18.55,
+          "peak_dbfs": -7.34,
+          "snr_db": 4.82,
+          "transcript": "This is only the beginning.",
+          "rationale": "Final line of film ('This is only the beginning.') turning toward camera."
+        }
+      ]
+    },
+    "Paul_Atreides": {
+      "character": "Paul Atreides",
+      "actor": "Timothée Chalamet",
+      "role": "Duke's heir / Kwisatz Haderach / Muad'Dib",
+      "primary_spk_id": "SPK_01",
+      "palette_color": "#FFD54F",
+      "compass_bearing": 20.0,
+      "primary_seed_anchor": {
+        "label": "Ecological Station - Landsraad Challenge to Kynes",
+        "start_card": 1067,
+        "end_card": 1075,
+        "card_span": "1067-1075",
+        "start_ms": 6429155,
+        "end_ms": 6453630,
+        "start_timestamp": "01:47:09,155",
+        "end_timestamp": "01:47:33,630",
+        "duration_s": 24.475,
+        "rms_dbfs": -39.22,
+        "peak_dbfs": -14.78,
+        "snr_db": 25.88,
+        "transcript": "You know what the Great Houses fear most, Dr Kynes? Exactly what has happened to us here. The Sardaukar coming and picking them off one by one. Only together can they stand a chance against the Imperium. Would you bear witness? Testify that the Emperor has moved against us here?",
+        "rationale": "Clear, steady, articulate acoustic monologue explaining political strategy to Kynes. Controlled room acoustic, low noise floor, excellent SNR (~25.9 dB)."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Desert Climax - Road into the Desert Speech to Stilgar",
+          "start_card": 1313,
+          "end_card": 1321,
+          "card_span": "1313-1321",
+          "start_ms": 8733458,
+          "end_ms": 8762286,
+          "start_timestamp": "02:25:33,458",
+          "end_timestamp": "02:26:02,286",
+          "duration_s": 28.828,
+          "rms_dbfs": -29.86,
+          "peak_dbfs": -11.5,
+          "snr_db": 16.08,
+          "transcript": "The Emperor sent us to this place. And my father came, not for spice, not for the riches, but for the strength of your people. My road leads into the desert. I can see it. If you'll have us, we will come.",
+          "rationale": "Resolute, mature vocal declaration to Stilgar and Sietch Tabr after defeating Jamis. High vocal authority."
+        },
+        {
+          "label": "Caladan Breakfast Inquiry",
+          "start_card": 26,
+          "end_card": 27,
+          "card_span": "26-27",
+          "start_ms": 251484,
+          "end_ms": 254320,
+          "start_timestamp": "00:04:11,484",
+          "end_timestamp": "00:04:14,320",
+          "duration_s": 2.836,
+          "rms_dbfs": -40.29,
+          "peak_dbfs": -22.99,
+          "snr_db": 29.52,
+          "transcript": "Why do we have to go through all this when it's already been decided?",
+          "rationale": "Clean, crisp morning conversational register with Lady Jessica in dining hall."
+        },
+        {
+          "label": "Desert Tent Spice Vision Outburst",
+          "start_card": 1007,
+          "end_card": 1010,
+          "card_span": "1007-1010",
+          "start_ms": 6026086,
+          "end_ms": 6033836,
+          "start_timestamp": "01:40:26,086",
+          "end_timestamp": "01:40:33,836",
+          "duration_s": 7.75,
+          "rms_dbfs": -22.26,
+          "peak_dbfs": -4.97,
+          "snr_db": 14.35,
+          "transcript": "I see a holy war spreading across the universe like unquenchable fire. A warrior religion that waves the Atreides banner in my father's name.",
+          "rationale": "Intense, emotive, high-salience vocal performance projecting panic over the future galactic jihad."
+        }
+      ]
+    },
+    "Lady_Jessica": {
+      "character": "Lady Jessica",
+      "actor": "Rebecca Ferguson",
+      "role": "Bene Gesserit sister / Leto's concubine / Paul's mother",
+      "primary_spk_id": "SPK_02",
+      "palette_color": "#FF8A80",
+      "compass_bearing": -15.0,
+      "primary_seed_anchor": {
+        "label": "Arrakeen Residency - Interrogation of Shadout Mapes",
+        "start_card": 449,
+        "end_card": 453,
+        "card_span": "449-453",
+        "start_ms": 2495376,
+        "end_ms": 2509039,
+        "start_timestamp": "00:41:35,376",
+        "end_timestamp": "00:41:49,039",
+        "duration_s": 13.663,
+        "rms_dbfs": -41.52,
+        "peak_dbfs": -17.93,
+        "snr_db": 26.4,
+        "transcript": "I know many things. I know that you have a weapon concealed in your bodice. If you mean to harm me, I must warn you, whatever you're hiding, it won't be enough.",
+        "rationale": "Calm, icy, commanding Bene Gesserit vocal timbre identifying Mapes' concealed crysknife. High SNR (~26.4 dB), ultra-clean interior acoustic."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Caladan Breakfast - Command to Use the Voice",
+          "start_card": 30,
+          "end_card": 31,
+          "card_span": "30-31",
+          "start_ms": 261861,
+          "end_ms": 266532,
+          "start_timestamp": "00:04:21,861",
+          "end_timestamp": "00:04:26,532",
+          "duration_s": 4.671,
+          "rms_dbfs": -41.62,
+          "peak_dbfs": -22.15,
+          "snr_db": 30.03,
+          "transcript": "If you want it, make me give it to you. Use the Voice.",
+          "rationale": "Authoritative maternal instructional tone ('If you want it, make me give it to you. Use the Voice.'). High SNR (~30.0 dB)."
+        },
+        {
+          "label": "Gom Jabbar Exterior - Litany Against Fear (Part 1)",
+          "start_card": 301,
+          "end_card": 307,
+          "card_span": "301-307",
+          "start_ms": 1585616,
+          "end_ms": 1610641,
+          "start_timestamp": "00:26:25,616",
+          "end_timestamp": "00:26:50,641",
+          "duration_s": 25.025,
+          "rms_dbfs": -32.0,
+          "peak_dbfs": -12.34,
+          "snr_db": 9.94,
+          "transcript": "I must not fear. I must not fear. Fear is the mind-killer. Fear is the little death that brings obliteration. And I'll face my fear and I'll permit it to pass over me and through me.",
+          "rationale": "Whispered, trembling, highly distinctive rhythmic recitation of the Litany outside the testing chamber."
+        },
+        {
+          "label": "Caladan Grounds - Explanation of Bene Gesserit Politics",
+          "start_card": 361,
+          "end_card": 365,
+          "card_span": "361-365",
+          "start_ms": 1865930,
+          "end_ms": 1876257,
+          "start_timestamp": "00:31:05,930",
+          "end_timestamp": "00:31:16,257",
+          "duration_s": 10.327,
+          "rms_dbfs": -37.76,
+          "peak_dbfs": -21.67,
+          "snr_db": 15.92,
+          "transcript": "The Bene Gesserit serve as powerful partners to the Great Houses, but there's more to it. You steer the politics of the Imperium from the shadows.",
+          "rationale": "Thoughtful, hushed explanation of secret breeding and political steering."
+        }
+      ]
+    },
+    "Duke_Leto_Atreides": {
+      "character": "Duke Leto Atreides",
+      "actor": "Oscar Isaac",
+      "role": "Head of House Atreides / Duke of Caladan & Arrakis",
+      "primary_spk_id": "SPK_03",
+      "palette_color": "#64B5F6",
+      "compass_bearing": 10.0,
+      "primary_seed_anchor": {
+        "label": "Arrakis Council - Fief Agreement with Stilgar",
+        "start_card": 644,
+        "end_card": 651,
+        "card_span": "644-651",
+        "start_ms": 3269895,
+        "end_ms": 3289756,
+        "start_timestamp": "00:54:29,895",
+        "end_timestamp": "00:54:49,756",
+        "duration_s": 19.861,
+        "rms_dbfs": -33.93,
+        "peak_dbfs": -13.49,
+        "snr_db": 35.86,
+        "transcript": "Gurney, just... just a moment. The Emperor has given me Arrakis as my fief to rule and protect. I cannot promise not to travel into the desert if duty compels me. But your sietches will be yours forever. And you will never be hunted while I govern here.",
+        "rationale": "Diplomatic, stately, baritone speech granting eternal sovereignty to Fremen sietches. Outstanding SNR (~35.9 dB), perfectly balanced room resonance."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Caladan Graveyard - Cultivating Desert Power",
+          "start_card": 175,
+          "end_card": 180,
+          "card_span": "175-180",
+          "start_ms": 873611,
+          "end_ms": 890122,
+          "start_timestamp": "00:14:33,611",
+          "end_timestamp": "00:14:50,122",
+          "duration_s": 16.511,
+          "rms_dbfs": -35.42,
+          "peak_dbfs": -15.93,
+          "snr_db": 30.0,
+          "transcript": "No. By making an alliance with the Fremen. That's what I've sent Duncan Idaho to arrange. Here on Caladan, we've ruled by air power and sea power. On Arrakis, we need to cultivate desert power.",
+          "rationale": "Intimate, resolute father-son guidance regarding Fremen alliance. Pristine SNR (~30.0 dB) in quiet graveyard."
+        },
+        {
+          "label": "Caladan Graveyard - Leadership & Fatherhood",
+          "start_card": 189,
+          "end_card": 197,
+          "card_span": "189-197",
+          "start_ms": 931830,
+          "end_ms": 977209,
+          "start_timestamp": "00:15:31,830",
+          "end_timestamp": "00:16:17,209",
+          "duration_s": 45.379,
+          "rms_dbfs": -36.26,
+          "peak_dbfs": -15.1,
+          "snr_db": 15.38,
+          "transcript": "Your grandfather said, \"A great man doesn't seek to lead. He's called to it, and he answers.\" And if your answer is no... you'll still be the only thing I ever needed you to be... my son. I found my own way to it. Maybe you'll find yours. In their memory... give it a try.",
+          "rationale": "Deep emotional tenderness ('A great man doesn't seek to lead... my son')."
+        },
+        {
+          "label": "Caladan Ceremony of Change - Acceptance Declaration",
+          "start_card": 89,
+          "end_card": 93,
+          "card_span": "89-93",
+          "start_ms": 544310,
+          "end_ms": 559252,
+          "start_timestamp": "00:09:04,310",
+          "end_timestamp": "00:09:19,252",
+          "duration_s": 14.942,
+          "rms_dbfs": -26.52,
+          "peak_dbfs": -7.63,
+          "snr_db": 17.88,
+          "transcript": "We are House Atreides. There is no call we do not answer, there is no faith that we betray. The Emperor asks us to bring peace to Arrakis. House Atreides accepts.",
+          "rationale": "Formal military/state proclamation accepting stewardship of Arrakis."
+        }
+      ]
+    },
+    "Baron_Vladimir_Harkonnen": {
+      "character": "Baron Vladimir Harkonnen",
+      "actor": "Stellan Skarsgård",
+      "role": "Ruler of House Harkonnen / Arch-nemesis of House Atreides",
+      "primary_spk_id": "SPK_05",
+      "palette_color": "#FFAB40",
+      "compass_bearing": 60.0,
+      "primary_seed_anchor": {
+        "label": "Giedi Prime Mud Bath - 'My desert. My Arrakis. My Dune.'",
+        "start_card": 538,
+        "end_card": 544,
+        "card_span": "538-544",
+        "start_ms": 2941671,
+        "end_ms": 2962659,
+        "start_timestamp": "00:49:01,671",
+        "end_timestamp": "00:49:22,659",
+        "duration_s": 20.988,
+        "rms_dbfs": -22.14,
+        "peak_dbfs": -3.03,
+        "snr_db": 22.27,
+        "transcript": "I said I would not harm them. And I shall not. But Arrakis is Arrakis. And the desert takes the weak. My desert. My Arrakis. My Dune.",
+        "rationale": "Iconic, rumbling, ultra-deep sub-bass vocal timbre. Zero music mask, stark sub-harmonic chest resonance, high SNR (~22.3 dB)."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Giedi Prime - Word of Honour to Reverend Mother",
+          "start_card": 530,
+          "end_card": 533,
+          "card_span": "530-533",
+          "start_ms": 2904134,
+          "end_ms": 2913543,
+          "start_timestamp": "00:48:24,134",
+          "end_timestamp": "00:48:33,543",
+          "duration_s": 9.409,
+          "rms_dbfs": -27.37,
+          "peak_dbfs": -8.63,
+          "snr_db": 20.07,
+          "transcript": "House Harkonnen would never dream of violating the sanctity of your order. I give you my word. We will not harm them.",
+          "rationale": "Sinuous, deceitful political vow with distinctive low vocal fry."
+        },
+        {
+          "label": "Floating Bath to Rabban - Demand for Spice Income ('Squeeze hard')",
+          "start_card": 1151,
+          "end_card": 1161,
+          "card_span": "1151-1161",
+          "start_ms": 7214673,
+          "end_ms": 7242701,
+          "start_timestamp": "02:00:14,673",
+          "end_timestamp": "02:00:42,701",
+          "duration_s": 28.028,
+          "rms_dbfs": -31.25,
+          "peak_dbfs": -11.18,
+          "snr_db": 16.07,
+          "transcript": "So, it's done. Finally. Send word to Giedi Prime to begin selling our spice reserves. But slowly. We don't want the price to fall. You have no idea how much it cost me to bring such a force to bear here. Now I only have one requirement. Income. So, squeeze, Rabban. Squeeze hard.",
+          "rationale": "Gravelly, wheezing baritone commanding economic oppression after surviving poison gas."
+        },
+        {
+          "label": "Arrakeen Palace to Paralyzed Leto - Fall of House Atreides",
+          "start_card": 982,
+          "end_card": 986,
+          "card_span": "982-986",
+          "start_ms": 5659787,
+          "end_ms": 5680808,
+          "start_timestamp": "01:34:19,787",
+          "end_timestamp": "01:34:40,808",
+          "duration_s": 21.021,
+          "rms_dbfs": -31.08,
+          "peak_dbfs": -9.91,
+          "snr_db": 15.56,
+          "transcript": "For hundreds of years, we've traded blood for blood. But no more. Your son is dead. Your concubine is dead. Tonight the House of Atreides falls. And your bloodline ends forever.",
+          "rationale": "Mocking, triumphalist taunt standing over the fallen Duke."
+        }
+      ]
+    },
+    "Reverend_Mother_Gaius_Helen_Mohiam": {
+      "character": "Reverend Mother Gaius Helen Mohiam",
+      "actor": "Charlotte Rampling",
+      "role": "Bene Gesserit Truthsayer to the Padishah Emperor",
+      "primary_spk_id": "SPK_04",
+      "palette_color": "#B388FF",
+      "compass_bearing": -40.0,
+      "primary_seed_anchor": {
+        "label": "Gom Jabbar Chamber - The Poison Needle Rule",
+        "start_card": 285,
+        "end_card": 290,
+        "card_span": "285-290",
+        "start_ms": 1499530,
+        "end_ms": 1512944,
+        "start_timestamp": "00:24:59,530",
+        "end_timestamp": "00:25:12,944",
+        "duration_s": 13.414,
+        "rms_dbfs": -37.36,
+        "peak_dbfs": -15.59,
+        "snr_db": 33.45,
+        "transcript": "I hold at your neck the Gom Jabbar. A poison needle. Instant death. The test is simple. Remove your hand from the box and you die.",
+        "rationale": "Chilling, razor-sharp diction explaining the Gom Jabbar test. Absolute quiet room, phenomenal SNR (~33.5 dB), dry direct vocal presence."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Gom Jabbar Chamber - Sifting Sand / Humanity Test",
+          "start_card": 314,
+          "end_card": 319,
+          "card_span": "314-319",
+          "start_ms": 1675206,
+          "end_ms": 1690162,
+          "start_timestamp": "00:27:55,206",
+          "end_timestamp": "00:28:10,162",
+          "duration_s": 14.956,
+          "rms_dbfs": -37.21,
+          "peak_dbfs": -14.48,
+          "snr_db": 35.88,
+          "transcript": "Like sifting sand through a screen, we sift people. If you had been unable to control your impulses, like an animal, we could not let you live. You inherit too much power.",
+          "rationale": "Philosophical explanation of Bene Gesserit natural selection ('we sift people'). High SNR (~24.1 dB)."
+        },
+        {
+          "label": "Caladan Ship Landing - Reprimand of Lady Jessica",
+          "start_card": 337,
+          "end_card": 344,
+          "card_span": "337-344",
+          "start_ms": 1759657,
+          "end_ms": 1776745,
+          "start_timestamp": "00:29:19,657",
+          "end_timestamp": "00:29:36,745",
+          "duration_s": 17.088,
+          "rms_dbfs": -31.97,
+          "peak_dbfs": -10.07,
+          "snr_db": 17.18,
+          "transcript": "You chose to train him in the Way, in defiance of our rule. He wields our power. He had to be tested to the limits. So much potential, wasted in a male. You were told to bear only daughters. But you, in your pride, thought you could produce the Kwisatz Haderach.",
+          "rationale": "Harsh, imperious condemnation of Jessica's pride in breeding a son."
+        },
+        {
+          "label": "Giedi Prime - Protection of Jessica and Paul",
+          "start_card": 525,
+          "end_card": 529,
+          "card_span": "525-529",
+          "start_ms": 2887697,
+          "end_ms": 2899969,
+          "start_timestamp": "00:48:07,697",
+          "end_timestamp": "00:48:19,969",
+          "duration_s": 12.272,
+          "rms_dbfs": -31.13,
+          "peak_dbfs": -13.49,
+          "snr_db": 22.59,
+          "transcript": "On that matter, Duke Leto Atreides means nothing to our order. But his wife is under our protection and by extension, her son. Allow them the dignity of exile.",
+          "rationale": "Stern decree to Baron Harkonnen enforcing Bene Gesserit covenant."
+        }
+      ]
+    },
+    "Stilgar": {
+      "character": "Stilgar",
+      "actor": "Javier Bardem",
+      "role": "Naib of Sietch Tabr / Fremen leader",
+      "primary_spk_id": "SPK_06",
+      "palette_color": "#69F0AE",
+      "compass_bearing": 45.0,
+      "primary_seed_anchor": {
+        "label": "Arrakis Council - Fremen Desert Boundary Demand",
+        "start_card": 636,
+        "end_card": 642,
+        "card_span": "636-642",
+        "start_ms": 3250355,
+        "end_ms": 3266948,
+        "start_timestamp": "00:54:10,355",
+        "end_timestamp": "00:54:26,948",
+        "duration_s": 16.593,
+        "rms_dbfs": -32.71,
+        "peak_dbfs": -14.22,
+        "snr_db": 33.4,
+        "transcript": "I ask for this. Do not seek our sietches. Do not trespass in our lands. The desert was ours long before you came. So, come and dig your spice, but when you have it, go back to this side of the Shield Wall and leave the desert to the Fremen.",
+        "rationale": "Gravelly, earthy, intense Fremen vocal timbre warning the Outworlders to stay behind the Shield Wall. Outstanding SNR (~34.2 dB)."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Desert Rock Confrontation - Praise of the Brave Crossing",
+          "start_card": 1225,
+          "end_card": 1228,
+          "card_span": "1225-1228",
+          "start_ms": 8020470,
+          "end_ms": 8031289,
+          "start_timestamp": "02:13:40,470",
+          "end_timestamp": "02:13:51,289",
+          "duration_s": 10.819,
+          "rms_dbfs": -32.67,
+          "peak_dbfs": -9.63,
+          "snr_db": 32.8,
+          "transcript": "That was a brave crossing they made in the path of Shai-Hulud. He does not speak or act like a weakling. Nor did his father.",
+          "rationale": "Deep authoritative Fremen dialect acknowledging Paul and Leto's courage to Jamis. High SNR (~29.5 dB)."
+        },
+        {
+          "label": "Desert Rock Confrontation - Sanctuary Verdict",
+          "start_card": 1237,
+          "end_card": 1241,
+          "card_span": "1237-1241",
+          "start_ms": 8056748,
+          "end_ms": 8069994,
+          "start_timestamp": "02:14:16,748",
+          "end_timestamp": "02:14:29,994",
+          "duration_s": 13.246,
+          "rms_dbfs": -34.23,
+          "peak_dbfs": -10.96,
+          "snr_db": 29.38,
+          "transcript": "The boy is young. He can learn our ways. He may have sanctuary. But the woman is untrained... and too old to learn.",
+          "rationale": "Harsh desert pragmatism judging Paul vs Jessica."
+        },
+        {
+          "label": "Post-Duel - Acceptance of Paul into Sietch Tabr",
+          "start_card": 1305,
+          "end_card": 1307,
+          "card_span": "1305-1307",
+          "start_ms": 8718943,
+          "end_ms": 8724907,
+          "start_timestamp": "02:25:18,943",
+          "end_timestamp": "02:25:24,907",
+          "duration_s": 5.964,
+          "rms_dbfs": -30.73,
+          "peak_dbfs": -11.68,
+          "snr_db": 11.42,
+          "transcript": "You're one of us now. A life for a life. Come with us to Sietch Tabr.",
+          "rationale": "Ceremonial Fremen decree ('A life for a life. Come with us to Sietch Tabr.')."
+        }
+      ]
+    },
+    "Gurney_Halleck": {
+      "character": "Gurney Halleck",
+      "actor": "Josh Brolin",
+      "role": "Warmaster of House Atreides / Paul's combat trainer",
+      "primary_spk_id": "SPK_07",
+      "palette_color": "#FF7043",
+      "compass_bearing": 30.0,
+      "primary_seed_anchor": {
+        "label": "Shield Training Room - Harkonnen Brutality Monologue",
+        "start_card": 230,
+        "end_card": 237,
+        "card_span": "230-237",
+        "start_ms": 1118917,
+        "end_ms": 1137193,
+        "start_timestamp": "00:18:38,917",
+        "end_timestamp": "00:18:57,193",
+        "duration_s": 18.276,
+        "rms_dbfs": -29.1,
+        "peak_dbfs": -5.66,
+        "snr_db": 32.29,
+        "transcript": "For 80 years, Arrakis belonged to House Harkonnen. 80 years of owning the spice fields. Can you imagine the wealth? Your eyes. I need to see it in your eyes. You never met Harkonnens before, I have. They're not human, they're brutal! You have to be ready.",
+        "rationale": "Passionate, gritty, battle-scarred baritone lecturing Paul on Harkonnen violence. Phenomenal SNR (~32.3 dB), dry acoustic, powerful vocal projection."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Shield Training Room - Gravity of Situation",
+          "start_card": 227,
+          "end_card": 229,
+          "card_span": "227-229",
+          "start_ms": 1109908,
+          "end_ms": 1116515,
+          "start_timestamp": "00:18:29,908",
+          "end_timestamp": "00:18:36,515",
+          "duration_s": 6.607,
+          "rms_dbfs": -35.63,
+          "peak_dbfs": -14.57,
+          "snr_db": 32.15,
+          "transcript": "You don't get it, do you? You don't really understand the grave nature of what's happening to us.",
+          "rationale": "Stern, urgent wake-up call to Paul ('You don't get it, do you?'). SNR (~32.2 dB)."
+        },
+        {
+          "label": "Shield Training Room - Necessity Over Mood",
+          "start_card": 216,
+          "end_card": 219,
+          "card_span": "216-219",
+          "start_ms": 1062093,
+          "end_ms": 1067316,
+          "start_timestamp": "00:17:42,093",
+          "end_timestamp": "00:17:47,316",
+          "duration_s": 5.223,
+          "rms_dbfs": -21.38,
+          "peak_dbfs": -3.13,
+          "snr_db": 20.05,
+          "transcript": "What's mood to do with it? You fight when the necessity arises, no matter the mood. Now fight!",
+          "rationale": "Classic combat instruction ('What's mood to do with it? You fight when the necessity arises...')."
+        },
+        {
+          "label": "Shield Training Room Entrance",
+          "start_card": 204,
+          "end_card": 206,
+          "card_span": "204-206",
+          "start_ms": 998563,
+          "end_ms": 1006471,
+          "start_timestamp": "00:16:38,563",
+          "end_timestamp": "00:16:46,471",
+          "duration_s": 7.908,
+          "rms_dbfs": -34.19,
+          "peak_dbfs": -10.62,
+          "snr_db": 23.99,
+          "transcript": "Are you the new Weapons Master? With Duncan Idaho gone, I must make do as best I can. Choose your blade.",
+          "rationale": "Gruff, wry dialogue challenging Paul to choose his blade."
+        }
+      ]
+    },
+    "Duncan_Idaho": {
+      "character": "Duncan Idaho",
+      "actor": "Jason Momoa",
+      "role": "Swordmaster of the Ginaz / Advance scout to the Fremen",
+      "primary_spk_id": "SPK_08",
+      "palette_color": "#26A69A",
+      "compass_bearing": 15.0,
+      "primary_seed_anchor": {
+        "label": "Arrakis Council Room - Report on Fremen Lethality",
+        "start_card": 601,
+        "end_card": 607,
+        "card_span": "601-607",
+        "start_ms": 3134406,
+        "end_ms": 3149672,
+        "start_timestamp": "00:52:14,406",
+        "end_timestamp": "00:52:29,672",
+        "duration_s": 15.266,
+        "rms_dbfs": -34.43,
+        "peak_dbfs": -11.39,
+        "snr_db": 34.37,
+        "transcript": "The Fremen watched me search for them for days. I never saw them. Finally, they sent a warrior out to kill me. And I gotta tell you, I have never come so close to dying. There's no finer fighter in the Imperium. They fight like demons.",
+        "rationale": "Warm, rugged, dynamic storytelling tone reporting on four weeks with the Fremen. Phenomenal acoustic clarity, SNR (~34.4 dB)."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Arrakis Council Room - Introduction of Stilgar",
+          "start_card": 587,
+          "end_card": 591,
+          "card_span": "587-591",
+          "start_ms": 3106302,
+          "end_ms": 3114461,
+          "start_timestamp": "00:51:46,302",
+          "end_timestamp": "00:51:54,461",
+          "duration_s": 8.159,
+          "rms_dbfs": -33.66,
+          "peak_dbfs": -17.34,
+          "snr_db": 30.4,
+          "transcript": "For four weeks, I lived with the Fremen. Hidden in the desert, in a community called a sietch. Stilgar, the leader of that sietch, has come with me to meet you, sire.",
+          "rationale": "Formal military intelligence report to Duke Leto. Pristine SNR (~30.4 dB)."
+        },
+        {
+          "label": "Arrakis Council Room - Acceptance of Stilgar's Moisture",
+          "start_card": 622,
+          "end_card": 624,
+          "card_span": "622-624",
+          "start_ms": 3210239,
+          "end_ms": 3218081,
+          "start_timestamp": "00:53:30,239",
+          "end_timestamp": "00:53:38,081",
+          "duration_s": 7.842,
+          "rms_dbfs": -40.45,
+          "peak_dbfs": -14.03,
+          "snr_db": 29.11,
+          "transcript": "Thank you, Stilgar, for the gift of your body's moisture. We accept it in the spirit in which it was given.",
+          "rationale": "Calm, diplomatic explanation preventing bloodshed over Fremen spitting custom. SNR (~29.1 dB)."
+        },
+        {
+          "label": "Arrakis Ornithopter - Reverence for the Desert",
+          "start_card": 674,
+          "end_card": 680,
+          "card_span": "674-680",
+          "start_ms": 3361991,
+          "end_ms": 3375171,
+          "start_timestamp": "00:56:01,991",
+          "end_timestamp": "00:56:15,171",
+          "duration_s": 13.18,
+          "rms_dbfs": -38.23,
+          "peak_dbfs": -14.93,
+          "snr_db": 27.56,
+          "transcript": "I do. They're fierce but loyal. They're attuned to the desert. Part of it. It's part of them. You wait till you see it. It's beautiful out there.",
+          "rationale": "Affectionate, awe-struck reflection on Fremen harmony with Arrakis. SNR (~27.6 dB)."
+        },
+        {
+          "label": "Caladan Hangar - Wisdom on Dreams and Action",
+          "start_card": 134,
+          "end_card": 139,
+          "card_span": "134-139",
+          "start_ms": 748356,
+          "end_ms": 760644,
+          "start_timestamp": "00:12:28,356",
+          "end_timestamp": "00:12:40,644",
+          "duration_s": 12.288,
+          "rms_dbfs": -33.58,
+          "peak_dbfs": -13.1,
+          "snr_db": 13.53,
+          "transcript": "That's why you want to come with me. Listen. Dreams make good stories, but everything important happens when we're awake. 'Cause that's when we make things happen. Look at you. Put on some muscle?",
+          "rationale": "Big-brother mentoring Paul before departure ('Dreams make good stories... Put on some muscle?')."
+        }
+      ]
+    },
+    "Thufir_Hawat": {
+      "character": "Thufir Hawat",
+      "actor": "Stephen McKinley Henderson",
+      "role": "Master of Assassins / Mentat of House Atreides",
+      "primary_spk_id": "SPK_09",
+      "palette_color": "#AB47BC",
+      "compass_bearing": -20.0,
+      "primary_seed_anchor": {
+        "label": "Arrakis Council Room - Harkonnen Spice Ledger Analysis",
+        "start_card": 554,
+        "end_card": 556,
+        "card_span": "554-556",
+        "start_ms": 2994557,
+        "end_ms": 3004518,
+        "start_timestamp": "00:49:54,557",
+        "end_timestamp": "00:50:04,518",
+        "duration_s": 9.961,
+        "rms_dbfs": -32.79,
+        "peak_dbfs": -11.46,
+        "snr_db": 23.05,
+        "transcript": "I secured a copy of the Harkonnens' account books. The Harkonnens were taking 10 billion solaris out of here every year.",
+        "rationale": "Analytical, rhythmic, Mentat computational cadence breaking down 10 billion solaris spice extraction. Excellent room clarity, SNR (~23.1 dB)."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Residency - Resignation Offer to Duke Leto",
+          "start_card": 508,
+          "end_card": 509,
+          "card_span": "508-509",
+          "start_ms": 2823520,
+          "end_ms": 2828091,
+          "start_timestamp": "00:47:03,520",
+          "end_timestamp": "00:47:08,091",
+          "duration_s": 4.571,
+          "rms_dbfs": -31.85,
+          "peak_dbfs": -11.17,
+          "snr_db": 17.88,
+          "transcript": "Sire, I failed you today. There's no excuse. You have my resignation.",
+          "rationale": "Grave, sorrowful, honourable delivery after hunter-seeker breach. SNR (~17.9 dB)."
+        },
+        {
+          "label": "Caladan Ceremony - Guild Navigator Cost Calculation",
+          "start_card": 75,
+          "end_card": 76,
+          "card_span": "75-76",
+          "start_ms": 476117,
+          "end_ms": 481222,
+          "start_timestamp": "00:07:56,117",
+          "end_timestamp": "00:08:01,222",
+          "duration_s": 5.105,
+          "rms_dbfs": -28.84,
+          "peak_dbfs": -12.84,
+          "snr_db": 12.34,
+          "transcript": "Three Guild Navigators. A total of 1.46 million, 62 solaris, round trip.",
+          "rationale": "Rapid computational trances ('Three Guild Navigators. A total of 1.46 million, 62 solaris...')."
+        },
+        {
+          "label": "Arrakis Council - Briefing on Dr. Liet Kynes",
+          "start_card": 571,
+          "end_card": 573,
+          "card_span": "571-573",
+          "start_ms": 3041741,
+          "end_ms": 3048020,
+          "start_timestamp": "00:50:41,741",
+          "end_timestamp": "00:50:48,020",
+          "duration_s": 6.279,
+          "rms_dbfs": -28.85,
+          "peak_dbfs": -10.72,
+          "snr_db": 14.13,
+          "transcript": "Dr Liet Kynes. Imperial Ecologist. Been here 20 years. Eccentric, from what I'm told.",
+          "rationale": "Terse intelligence summary of the Imperial Ecologist."
+        }
+      ]
+    },
+    "Herald_of_the_Change": {
+      "character": "Herald of the Change",
+      "actor": "Robert Higgins",
+      "role": "Padishah Imperial Emissary / Master of Ceremonies",
+      "primary_spk_id": "SPK_10",
+      "palette_color": "#D4E157",
+      "compass_bearing": 0.0,
+      "primary_seed_anchor": {
+        "label": "Caladan Ceremony of the Change - Witness Invocation",
+        "start_card": 81,
+        "end_card": 84,
+        "card_span": "81-84",
+        "start_ms": 509578,
+        "end_ms": 522221,
+        "start_timestamp": "00:08:29,578",
+        "end_timestamp": "00:08:42,221",
+        "duration_s": 12.643,
+        "rms_dbfs": -27.87,
+        "peak_dbfs": -8.22,
+        "snr_db": 22.7,
+        "transcript": "We are witnessed by members of the Imperial Court, representatives of the Spacing Guild and a sister of the Bene Gesserit. The Emperor has spoken.",
+        "rationale": "Magnificent, theatrical, boomingly resonant heraldic cadence witnessed by Imperial Court and Spacing Guild. High acoustic clarity, SNR (~22.7 dB)."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Caladan Ceremony of the Change - Imperial Mandate & Challenge",
+          "start_card": 85,
+          "end_card": 88,
+          "card_span": "85-88",
+          "start_ms": 523656,
+          "end_ms": 535167,
+          "start_timestamp": "00:08:43,656",
+          "end_timestamp": "00:08:55,167",
+          "duration_s": 11.511,
+          "rms_dbfs": -28.68,
+          "peak_dbfs": -11.92,
+          "snr_db": 19.24,
+          "transcript": "\"House Atreides shall immediately take control of Arrakis and serve as its steward.\" Do you accept?",
+          "rationale": "Imperial decree transfer of Arrakis to House Atreides ('Do you accept?'). SNR (~19.2 dB)."
+        },
+        {
+          "label": "Caladan Ceremony of the Change - Sovereign Title Proclamation",
+          "start_card": 77,
+          "end_card": 80,
+          "card_span": "77-80",
+          "start_ms": 496896,
+          "end_ms": 509480,
+          "start_timestamp": "00:08:16,896",
+          "end_timestamp": "00:08:29,480",
+          "duration_s": 12.584,
+          "rms_dbfs": -25.86,
+          "peak_dbfs": -8.38,
+          "snr_db": 14.73,
+          "transcript": "By the grace of Shaddam IV of House Corrino, ascendant to the Golden Lion Throne of Padishah Emperor of the Known Universe, I stand before you as Herald of the Change.",
+          "rationale": "Formal heraldic opening invoking Shaddam IV of House Corrino."
+        }
+      ]
+    },
+    "Dr_Wellington_Yueh": {
+      "character": "Dr. Wellington Yueh",
+      "actor": "Chang Chen",
+      "role": "Suk Doctor of House Atreides (Imperial Conditioning broken)",
+      "primary_spk_id": "SPK_11",
+      "palette_color": "#8D6E63",
+      "compass_bearing": -25.0,
+      "primary_seed_anchor": {
+        "label": "Arrakeen Palace - Deliverance Demand to Baron Harkonnen",
+        "start_card": 968,
+        "end_card": 973,
+        "card_span": "968-973",
+        "start_ms": 5571465,
+        "end_ms": 5586897,
+        "start_timestamp": "01:32:51,465",
+        "end_timestamp": "01:33:06,897",
+        "duration_s": 15.432,
+        "rms_dbfs": -34.7,
+        "peak_dbfs": -11.04,
+        "snr_db": 23.15,
+        "transcript": "I jammed their comms and lowered their shields. I delivered the Duke and his family. The bargain to the letter. And what was I to do for you? Deliver my wife from her agony.",
+        "rationale": "Tense, desperate, tragic delivery demanding his wife Wanna's release. High SNR (~23.2 dB), stark interior acoustic."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Caladan Quarters - Checking Paul's Vitals",
+          "start_card": 268,
+          "end_card": 271,
+          "card_span": "268-271",
+          "start_ms": 1366381,
+          "end_ms": 1402834,
+          "start_timestamp": "00:22:46,381",
+          "end_timestamp": "00:23:22,834",
+          "duration_s": 36.453,
+          "rms_dbfs": -40.01,
+          "peak_dbfs": -14.91,
+          "snr_db": 12.98,
+          "transcript": "Hello, young master. Your mother asked me to check your vitals. What's happening? His heart is strong as ever, my lady.",
+          "rationale": "Gentle, respectful, professional bedside manner before Gom Jabbar test."
+        },
+        {
+          "label": "Arrakeen Infirmary - Confession of Betrayal to Leto",
+          "start_card": 921,
+          "end_card": 928,
+          "card_span": "921-928",
+          "start_ms": 4942170,
+          "end_ms": 4967428,
+          "start_timestamp": "01:22:22,170",
+          "end_timestamp": "01:22:47,428",
+          "duration_s": 25.258,
+          "rms_dbfs": -34.32,
+          "peak_dbfs": -15.64,
+          "snr_db": 9.36,
+          "transcript": "I'm sorry, my lord. But I've made a bargain with the Baron. Why? I had no choice. The Harkonnens have my wife, Wanna. They take her apart like a doll. I will buy her freedom. And you are the price.",
+          "rationale": "Tortured, weeping confession explaining Wanna's torture by the Harkonnens."
+        },
+        {
+          "label": "Arrakeen Infirmary - Poison Peg Tooth Plan",
+          "start_card": 929,
+          "end_card": 937,
+          "card_span": "929-937",
+          "start_ms": 4970765,
+          "end_ms": 5004265,
+          "start_timestamp": "01:22:50,765",
+          "end_timestamp": "01:23:24,265",
+          "duration_s": 33.5,
+          "rms_dbfs": -34.66,
+          "peak_dbfs": -16.5,
+          "snr_db": 9.05,
+          "transcript": "For Paul. I will do what I can. And you will kill a man for me. I'm going to replace your peg tooth. If you bite down hard, this tooth will crush. Breathe out, and you will fill the air with poison. It will be your last breath. But if you choose your moment well, it will also be the Baron's.",
+          "rationale": "Whispered tactical instructions for assassinating the Baron with cyanide gas."
+        }
+      ]
+    },
+    "Dr_Liet_Kynes": {
+      "character": "Dr. Liet Kynes",
+      "actor": "Sharon Duncan-Brewster",
+      "role": "Imperial Ecologist / Judge of the Change / Fremen leader",
+      "primary_spk_id": "SPK_12",
+      "palette_color": "#26C6DA",
+      "compass_bearing": 35.0,
+      "primary_seed_anchor": {
+        "label": "Arrakeen Testing Room - Stillsuit Technical Briefing",
+        "start_card": 700,
+        "end_card": 706,
+        "card_span": "700-706",
+        "start_ms": 3458087,
+        "end_ms": 3478324,
+        "start_timestamp": "00:57:38,087",
+        "end_timestamp": "00:57:58,324",
+        "duration_s": 20.237,
+        "rms_dbfs": -32.93,
+        "peak_dbfs": -13.93,
+        "snr_db": 25.66,
+        "transcript": "A stillsuit is a high-efficiency filtration system. Even this early in the morning, you wouldn't survive two hours without one of these. It cools the body and recycles the water lost to sweat. Your body's movements provide the power.",
+        "rationale": "Clear, precise, scientific expository speech detailing the Fremen filtration system. Outstanding SNR (~25.7 dB), minimal background noise."
+      },
+      "secondary_anchors": [
+        {
+          "label": "Testing Station - Confronting Paul on Imperial Realities",
+          "start_card": 1086,
+          "end_card": 1089,
+          "card_span": "1086-1089",
+          "start_ms": 6475038,
+          "end_ms": 6484386,
+          "start_timestamp": "01:47:55,038",
+          "end_timestamp": "01:48:04,386",
+          "duration_s": 9.348,
+          "rms_dbfs": -34.99,
+          "peak_dbfs": -13.87,
+          "snr_db": 27.78,
+          "transcript": "The Emperor feared the Atreides. He brought you here to kill you. What don't you understand? You're a lost boy hiding in a hole in the ground.",
+          "rationale": "Sharp, piercing critique challenging Paul's ambition for the throne. High SNR (~27.8 dB)."
+        },
+        {
+          "label": "Arrakeen Testing Room - Suit Water Retention Mechanics",
+          "start_card": 707,
+          "end_card": 710,
+          "card_span": "707-710",
+          "start_ms": 3478416,
+          "end_ms": 3487416,
+          "start_timestamp": "00:57:58,416",
+          "end_timestamp": "00:58:07,416",
+          "duration_s": 9.0,
+          "rms_dbfs": -32.01,
+          "peak_dbfs": -16.29,
+          "snr_db": 25.37,
+          "transcript": "Inside the mask, you'll find a tube to allow you to drink the recycled water. In good working order, your suit won't lose more than a thimbleful of water a day.",
+          "rationale": "Clinical description of thimbleful water loss in desert conditions. SNR (~25.4 dB)."
+        },
+        {
+          "label": "Testing Station - History of Arrakis Ecology & Spice",
+          "start_card": 1053,
+          "end_card": 1060,
+          "card_span": "1053-1060",
+          "start_ms": 6343403,
+          "end_ms": 6367548,
+          "start_timestamp": "01:45:43,403",
+          "end_timestamp": "01:46:07,548",
+          "duration_s": 24.145,
+          "rms_dbfs": -26.66,
+          "peak_dbfs": -4.51,
+          "snr_db": 16.3,
+          "transcript": "Do you know what this place is? It's an old ecological testing station. They were meant to tame the planet. Free the water locked beneath the sands. Arrakis could have been a paradise. The work had begun, but then the spice was discovered. And suddenly no one wanted the desert to go away.",
+          "rationale": "Wistful, tragic recounting of how spice exploitation ruined the greening of Arrakis."
+        },
+        {
+          "label": "Desert Dunes - Final Defiance to Sardaukar",
+          "start_card": 1128,
+          "end_card": 1129,
+          "card_span": "1128-1129",
+          "start_ms": 6967193,
+          "end_ms": 6973032,
+          "start_timestamp": "01:56:07,193",
+          "end_timestamp": "01:56:13,032",
+          "duration_s": 5.839,
+          "rms_dbfs": -21.56,
+          "peak_dbfs": -6.17,
+          "snr_db": 8.83,
+          "transcript": "I serve only one master. His name is Shai-Hulud.",
+          "rationale": "Solemn, unwavering last words ('I serve only one master. His name is Shai-Hulud.')."
+        }
+      ]
+    }
+  },
+  "key_scenes": {
+    "scene_01_caladan_breakfast": {
+      "title": "Caladan Breakfast Scene (The Voice Practice)",
+      "card_span": "Cards 20-41",
+      "time_span": "00:03:57,770 --> 00:05:39,805",
+      "speakers": [
+        "Lady Jessica",
+        "Paul Atreides"
+      ],
+      "turn_boundaries": [
+        {
+          "card": 20,
+          "speaker": "Lady Jessica",
+          "text": "It's good you're up early."
+        },
+        {
+          "card": 21,
+          "speaker": "Lady Jessica",
+          "text": "Your father wants you in full dress"
+        },
+        {
+          "card": 22,
+          "speaker": "Lady Jessica",
+          "text": "before the Emperor's Herald arrives."
+        },
+        {
+          "card": 23,
+          "speaker": "Paul Atreides",
+          "text": "Full dress?"
+        },
+        {
+          "card": 24,
+          "speaker": "Paul Atreides",
+          "text": "Military?"
+        },
+        {
+          "card": 25,
+          "speaker": "Lady Jessica",
+          "text": "Ceremonial."
+        },
+        {
+          "card": 26,
+          "speaker": "Paul Atreides",
+          "text": "Why do we have to go through all this"
+        },
+        {
+          "card": 27,
+          "speaker": "Paul Atreides",
+          "text": "when it's already been decided?"
+        },
+        {
+          "card": 28,
+          "speaker": "Lady Jessica",
+          "text": "Ceremony."
+        },
+        {
+          "card": 29,
+          "speaker": "Paul Atreides",
+          "text": "Thank you."
+        },
+        {
+          "card": 30,
+          "speaker": "Lady Jessica",
+          "text": "If you want it, make me give it to you."
+        },
+        {
+          "card": 31,
+          "speaker": "Lady Jessica",
+          "text": "Use the Voice."
+        },
+        {
+          "card": 32,
+          "speaker": "Paul Atreides",
+          "text": "Mom, I just woke up."
+        },
+        {
+          "card": 33,
+          "speaker": "Paul Atreides",
+          "text": "Give me the water."
+        },
+        {
+          "card": 34,
+          "speaker": "Lady Jessica",
+          "text": "The glass can't hear you. Command me."
+        },
+        {
+          "card": 35,
+          "speaker": "Paul Atreides (using The Voice)",
+          "text": "Give me the water."
+        },
+        {
+          "card": 36,
+          "speaker": "Lady Jessica",
+          "text": "Almost."
+        },
+        {
+          "card": 37,
+          "speaker": "Paul Atreides",
+          "text": "Almost?"
+        },
+        {
+          "card": 38,
+          "speaker": "Lady Jessica",
+          "text": "Bene Gesserit skills take years to learn, Paul."
+        },
+        {
+          "card": 39,
+          "speaker": "Lady Jessica",
+          "text": "You look tired."
+        },
+        {
+          "card": 40,
+          "speaker": "Lady Jessica",
+          "text": "More dreams?"
+        },
+        {
+          "card": 41,
+          "speaker": "Paul Atreides",
+          "text": "No."
+        }
+      ]
+    },
+    "scene_02_caladan_herald_ceremony": {
+      "title": "Caladan Herald of the Change Ceremony",
+      "card_span": "Cards 71-98",
+      "time_span": "00:07:46,665 --> 00:10:17,016",
+      "speakers": [
+        "Duke Leto Atreides",
+        "Gurney Halleck",
+        "Thufir Hawat",
+        "Herald of the Change",
+        "Atreides Army",
+        "Paul Atreides",
+        "Lady Jessica"
+      ],
+      "turn_boundaries": [
+        {
+          "card": 71,
+          "speaker": "Duke Leto Atreides",
+          "text": "Smile, Gurney."
+        },
+        {
+          "card": 72,
+          "speaker": "Gurney Halleck",
+          "text": "I am smiling."
+        },
+        {
+          "card": 73,
+          "speaker": "Duke Leto Atreides",
+          "text": "How much will it cost them,"
+        },
+        {
+          "card": 74,
+          "speaker": "Duke Leto Atreides",
+          "text": "travelling all this way for this formality?"
+        },
+        {
+          "card": 75,
+          "speaker": "Thufir Hawat",
+          "text": "Three Guild Navigators."
+        },
+        {
+          "card": 76,
+          "speaker": "Thufir Hawat",
+          "text": "A total of 1.46 million, 62 solaris, round trip."
+        },
+        {
+          "cards": "77-88",
+          "speaker": "Herald of the Change",
+          "text": "By the grace of Shaddam IV of House Corrino, ascendant to the Golden Lion Throne of Padishah Emperor of the Known Universe, I stand before you as Herald of the Change. We are witnessed by members of the Imperial Court, representatives of the Spacing Guild and a sister of the Bene Gesserit. The Emperor has spoken. \"House Atreides shall immediately take control of Arrakis and serve as its steward.\" Do you accept?"
+        },
+        {
+          "cards": "89-93",
+          "speaker": "Duke Leto Atreides",
+          "text": "We are House Atreides. There is no call we do not answer, there is no faith that we betray. The Emperor asks us to bring peace to Arrakis. House Atreides accepts."
+        },
+        {
+          "cards": "94-95",
+          "speaker": "Atreides Army Chorus",
+          "text": "Atreides! Atreides! Atreides!"
+        },
+        {
+          "card": 96,
+          "speaker": "Herald of the Change",
+          "text": "Your seal."
+        },
+        {
+          "card": 97,
+          "speaker": "Paul Atreides",
+          "text": "So, it's done?"
+        },
+        {
+          "card": 98,
+          "speaker": "Lady Jessica",
+          "text": "It's done."
+        }
+      ]
+    },
+    "scene_03_shield_training": {
+      "title": "Shield Training Room (Paul vs Gurney)",
+      "card_span": "Cards 198-237",
+      "time_span": "00:16:26,017 --> 00:18:57,193",
+      "speakers": [
+        "Gurney Halleck",
+        "Paul Atreides"
+      ],
+      "turn_boundaries": [
+        {
+          "cards": "198-199",
+          "speaker": "Gurney Halleck",
+          "text": "Don't stand with your back to the door. How many times do we have to tell you?"
+        },
+        {
+          "cards": "200-201",
+          "speaker": "Paul Atreides",
+          "text": "I could tell it was you by your footsteps, Gurney Halleck."
+        },
+        {
+          "card": 202,
+          "speaker": "Gurney Halleck",
+          "text": "Someone might imitate my stride."
+        },
+        {
+          "card": 203,
+          "speaker": "Paul Atreides",
+          "text": "I know the difference."
+        },
+        {
+          "cards": "204-206",
+          "speaker": "Gurney Halleck",
+          "text": "Are you the new Weapons Master? With Duncan Idaho gone, I must make do as best I can. Choose your blade."
+        },
+        {
+          "cards": "207-209",
+          "speaker": "Paul Atreides",
+          "text": "I've had quite a day, Gurney. Give us a song instead. That's rude."
+        },
+        {
+          "cards": "210-211",
+          "speaker": "Gurney Halleck",
+          "text": "Come on. Come on."
+        },
+        {
+          "card": 212,
+          "speaker": "Paul Atreides",
+          "text": "Old man."
+        },
+        {
+          "card": 213,
+          "speaker": "Gurney Halleck",
+          "text": "Ah, the slow blade penetrates the shield."
+        },
+        {
+          "card": 214,
+          "speaker": "Paul Atreides",
+          "text": "I guess I'm not in the mood today."
+        },
+        {
+          "card": 215,
+          "speaker": "Gurney Halleck / Paul Atreides",
+          "text": "- Mood? - Yeah."
+        },
+        {
+          "cards": "216-220",
+          "speaker": "Gurney Halleck",
+          "text": "What's mood to do with it? You fight when the necessity arises, no matter the mood. Now fight! Come on!"
+        },
+        {
+          "card": 221,
+          "speaker": "Paul Atreides",
+          "text": "I have you."
+        },
+        {
+          "cards": "222-224",
+          "speaker": "Gurney Halleck",
+          "text": "Aye. But look down, my lord. You'd have joined me in death."
+        },
+        {
+          "card": 225,
+          "speaker": "Paul Atreides",
+          "text": "I see you found the mood."
+        },
+        {
+          "card": 226,
+          "speaker": "Paul Atreides",
+          "text": "Will it be that bad?"
+        },
+        {
+          "cards": "227-237",
+          "speaker": "Gurney Halleck",
+          "text": "You don't get it, do you? You don't really understand the grave nature of what's happening to us. For 80 years, Arrakis belonged to House Harkonnen. 80 years of owning the spice fields. Can you imagine the wealth? Your eyes. I need to see it in your eyes. You never met Harkonnens before, I have. They're not human, they're brutal! You have to be ready."
+        }
+      ]
+    },
+    "scene_04_gom_jabbar": {
+      "title": "Gom Jabbar Scene (Reverend Mother vs Paul vs Jessica)",
+      "card_span": "Cards 254-356",
+      "time_span": "00:21:45,704 --> 00:30:07,079",
+      "speakers": [
+        "Lady Jessica",
+        "Paul Atreides",
+        "Dr. Wellington Yueh",
+        "Reverend Mother Gaius Helen Mohiam"
+      ],
+      "turn_boundaries": [
+        {
+          "cards": "254-255",
+          "speaker": "Lady Jessica",
+          "text": "Paul. Paul, wake up."
+        },
+        {
+          "card": 256,
+          "speaker": "Paul Atreides",
+          "text": "What's wrong?"
+        },
+        {
+          "card": 257,
+          "speaker": "Lady Jessica",
+          "text": "Get dressed and come with me."
+        },
+        {
+          "card": 258,
+          "speaker": "Paul Atreides",
+          "text": "What is this?"
+        },
+        {
+          "cards": "259-262",
+          "speaker": "Lady Jessica",
+          "text": "The Reverend Mother Gaius Helen Mohiam is here. She was my teacher at the Bene Gesserit school. She's now Truthsayer to the Emperor himself. She would like to meet you."
+        },
+        {
+          "card": 263,
+          "speaker": "Paul Atreides",
+          "text": "Why?"
+        },
+        {
+          "card": 264,
+          "speaker": "Lady Jessica",
+          "text": "She wants to know about your dreams."
+        },
+        {
+          "cards": "265-266",
+          "speaker": "Paul Atreides",
+          "text": "How does she know about my dreams? And why is Dr Yueh here?"
+        },
+        {
+          "card": 267,
+          "speaker": "Lady Jessica",
+          "text": "He only needs a moment."
+        },
+        {
+          "cards": "268-269",
+          "speaker": "Dr. Wellington Yueh",
+          "text": "Hello, young master. Your mother asked me to check your vitals."
+        },
+        {
+          "card": 270,
+          "speaker": "Paul Atreides",
+          "text": "What's happening?"
+        },
+        {
+          "card": 271,
+          "speaker": "Dr. Wellington Yueh",
+          "text": "His heart is strong as ever, my lady."
+        },
+        {
+          "card": 272,
+          "speaker": "Lady Jessica",
+          "text": "Paul..."
+        },
+        {
+          "card": 273,
+          "speaker": "Paul Atreides",
+          "text": "Who are you?"
+        },
+        {
+          "cards": "274-276",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Defiance in the eyes. Like his father. Leave us."
+        },
+        {
+          "cards": "277-278",
+          "speaker": "Lady Jessica",
+          "text": "You must do everything the Reverend Mother tells you."
+        },
+        {
+          "card": 279,
+          "speaker": "Paul Atreides",
+          "text": "You dismiss my mother in her own house."
+        },
+        {
+          "cards": "280-281",
+          "speaker": "Reverend Mother Gaius Helen Mohiam (using The Voice)",
+          "text": "Come here. Kneel."
+        },
+        {
+          "card": 282,
+          "speaker": "Paul Atreides",
+          "text": "How dare you use the Voice on me?"
+        },
+        {
+          "card": 283,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Put your right hand in the box."
+        },
+        {
+          "card": 284,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Your mother bade you obey me."
+        },
+        {
+          "cards": "285-290",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "I hold at your neck the Gom Jabbar. A poison needle. Instant death. The test is simple. Remove your hand from the box and you die."
+        },
+        {
+          "card": 291,
+          "speaker": "Paul Atreides",
+          "text": "What's in the box?"
+        },
+        {
+          "card": 292,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Pain."
+        },
+        {
+          "cards": "293-295",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "No need to call the guards. Your mother stands behind that door. No one would get past her."
+        },
+        {
+          "card": 296,
+          "speaker": "Paul Atreides",
+          "text": "Why are you doing this?"
+        },
+        {
+          "cards": "297-299",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "An animal caught in a trap will gnaw off its own leg to escape. What will you do?"
+        },
+        {
+          "card": 300,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Silence."
+        },
+        {
+          "cards": "301-312",
+          "speaker": "Lady Jessica (Hallway - Litany Against Fear)",
+          "text": "I must not fear. I must not fear. Fear is the mind-killer. Fear is the little death that brings obliteration. And I'll face my fear and I'll permit it to pass over me and through me. And when it has gone past... I will turn the inner eye and see its path. And where the fear has gone, there will be nothing. Only I will remain."
+        },
+        {
+          "card": 313,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Enough."
+        },
+        {
+          "cards": "314-319",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Like sifting sand through a screen, we sift people. If you had been unable to control your impulses, like an animal, we could not let you live. You inherit too much power."
+        },
+        {
+          "card": 320,
+          "speaker": "Paul Atreides",
+          "text": "What, because I'm a duke's son?"
+        },
+        {
+          "cards": "321-322",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Because you are Jessica's son. You have more than one birthright, boy."
+        },
+        {
+          "card": 323,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Jessica?"
+        },
+        {
+          "card": 324,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "You've been training him in the Way."
+        },
+        {
+          "card": 325,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Tell me about these dreams."
+        },
+        {
+          "card": 326,
+          "speaker": "Paul Atreides / Reverend Mother Mohiam",
+          "text": "- I had one tonight. - What did you see?"
+        },
+        {
+          "cards": "327-328",
+          "speaker": "Paul Atreides",
+          "text": "A girl. On Arrakis."
+        },
+        {
+          "card": 329,
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Have you dreamt of her before?"
+        },
+        {
+          "card": 330,
+          "speaker": "Paul Atreides",
+          "text": "Many times."
+        },
+        {
+          "cards": "331-332",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Do you often dream things that happen just as you dreamed them?"
+        },
+        {
+          "card": 333,
+          "speaker": "Paul Atreides",
+          "text": "Not exactly."
+        },
+        {
+          "cards": "334-335",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "Goodbye, young human. I hope you live."
+        },
+        {
+          "card": 336,
+          "speaker": "Lady Jessica",
+          "text": "Did you have to go that far?"
+        },
+        {
+          "cards": "337-344",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "You chose to train him in the Way, in defiance of our rule. He wields our power. He had to be tested to the limits. So much potential, wasted in a male. You were told to bear only daughters. But you, in your pride, thought you could produce the Kwisatz Haderach."
+        },
+        {
+          "card": 345,
+          "speaker": "Lady Jessica",
+          "text": "Was I wrong?"
+        },
+        {
+          "cards": "346-351",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "You're lucky he didn't die in that room. If he is The One, he has a long way to go. His Sight is barely awakened, and now he goes into the fire. But our plans are measured in centuries. We have other prospects if he fails his promise."
+        },
+        {
+          "card": 352,
+          "speaker": "Lady Jessica",
+          "text": "Do you see so little hope?"
+        },
+        {
+          "cards": "353-356",
+          "speaker": "Reverend Mother Gaius Helen Mohiam",
+          "text": "On Arrakis, we have done all we can for you. A path has been laid. Let's hope he doesn't squander it."
+        }
+      ]
+    },
+    "scene_05_arrakis_council": {
+      "title": "Arrakis Council Room (Operations & Spice Strategy)",
+      "card_span": "Cards 545-580",
+      "time_span": "00:49:25,828 --> 00:51:02,033",
+      "speakers": [
+        "Gurney Halleck",
+        "Paul Atreides",
+        "Duke Leto Atreides",
+        "Thufir Hawat"
+      ],
+      "turn_boundaries": [
+        {
+          "cards": "545-548",
+          "speaker": "Gurney Halleck",
+          "text": "Your first strategy meeting. Paul Atreides, who catches hunter-seekers in his bare hands like a hero of old."
+        },
+        {
+          "card": 549,
+          "speaker": "Paul Atreides",
+          "text": "Thanks for the humiliation, old man."
+        },
+        {
+          "card": 550,
+          "speaker": "Gurney Halleck",
+          "text": "Gotta keep an eye on you."
+        },
+        {
+          "card": 551,
+          "speaker": "Atreides Guard Officer",
+          "text": "Attention!"
+        },
+        {
+          "cards": "552-553",
+          "speaker": "Duke Leto Atreides",
+          "text": "Let's get started. Thufir. Operations."
+        },
+        {
+          "cards": "554-556",
+          "speaker": "Thufir Hawat",
+          "text": "I secured a copy of the Harkonnens' account books. The Harkonnens were taking 10 billion solaris out of here every year."
+        },
+        {
+          "cards": "557-558",
+          "speaker": "Gurney Halleck (quoting scripture)",
+          "text": "\"They shall suck of the abundance of the seas, and the treasure hid in the sand.\""
+        },
+        {
+          "cards": "559-560",
+          "speaker": "Thufir Hawat",
+          "text": "We won't see profits like that for a while. Not with the equipment they left us."
+        },
+        {
+          "card": 561,
+          "speaker": "Duke Leto Atreides",
+          "text": "How bad is it?"
+        },
+        {
+          "cards": "562-563",
+          "speaker": "Thufir Hawat",
+          "text": "These are spice silos. We're meant to fill every crate."
+        },
+        {
+          "card": 564,
+          "speaker": "Paul Atreides",
+          "text": "All of them?"
+        },
+        {
+          "cards": "565-566",
+          "speaker": "Thufir Hawat",
+          "text": "Every 25 standard days. Harkonnen sabotage slows us down."
+        },
+        {
+          "cards": "567-570",
+          "speaker": "Duke Leto Atreides",
+          "text": "But who's meant to arbitrate? Isn't there a Judge of the Change to oversee the transition? Who did the Emperor appoint?"
+        },
+        {
+          "cards": "571-573",
+          "speaker": "Thufir Hawat",
+          "text": "Dr Liet Kynes. Imperial Ecologist. Been here 20 years. Eccentric, from what I'm told."
+        },
+        {
+          "card": 574,
+          "speaker": "Duke Leto Atreides",
+          "text": "I want to see these harvesting fields myself."
+        },
+        {
+          "card": 575,
+          "speaker": "Thufir Hawat",
+          "text": "I wouldn't recommend it, my lord."
+        },
+        {
+          "cards": "576-578",
+          "speaker": "Duke Leto Atreides",
+          "text": "Have this Judge of the Change accompany us. A meeting's long overdue. And we'll get a bit of Imperial protection."
+        },
+        {
+          "card": 579,
+          "speaker": "Gurney Halleck",
+          "text": "A hostage?"
+        },
+        {
+          "card": 580,
+          "speaker": "Duke Leto Atreides",
+          "text": "I love it."
+        }
+      ]
+    },
+    "scene_06_stilgar_meeting": {
+      "title": "Arrakis Meeting with Stilgar (Water Gift & Sietch Pact)",
+      "card_span": "Cards 581-661",
+      "time_span": "00:51:03,193 --> 00:55:27,090",
+      "speakers": [
+        "Duncan Idaho",
+        "Paul Atreides",
+        "Duke Leto Atreides",
+        "Thufir Hawat",
+        "Gurney Halleck",
+        "Stilgar"
+      ],
+      "turn_boundaries": [
+        {
+          "card": 581,
+          "speaker": "Guard Attendant",
+          "text": "He's here, my lord."
+        },
+        {
+          "cards": "582-585",
+          "speaker": "Duncan Idaho",
+          "text": "Take care of them. They are friends. / My boy! / I swear you're getting taller."
+        },
+        {
+          "card": 586,
+          "speaker": "Paul Atreides",
+          "text": "Well, you smell much worse."
+        },
+        {
+          "cards": "587-591",
+          "speaker": "Duncan Idaho",
+          "text": "For four weeks, I lived with the Fremen. Hidden in the desert, in a community called a sietch. Stilgar, the leader of that sietch, has come with me to meet you, sire."
+        },
+        {
+          "card": 592,
+          "speaker": "Duke Leto Atreides",
+          "text": "This sietch, how is it hidden?"
+        },
+        {
+          "cards": "593-594",
+          "speaker": "Duncan Idaho",
+          "text": "It's underground. Arrakis is filled with caverns."
+        },
+        {
+          "card": 595,
+          "speaker": "Duke Leto Atreides",
+          "text": "How big was the place?"
+        },
+        {
+          "cards": "596-598",
+          "speaker": "Duncan Idaho",
+          "text": "I'd say 10,000 people. And there are hundreds of sietches. Millions of Fremen."
+        },
+        {
+          "card": 599,
+          "speaker": "Duke Leto Atreides",
+          "text": "You were right."
+        },
+        {
+          "card": 600,
+          "speaker": "Thufir Hawat",
+          "text": "The Harkonnen estimate was 50,000 on the whole planet."
+        },
+        {
+          "cards": "601-607",
+          "speaker": "Duncan Idaho",
+          "text": "The Fremen watched me search for them for days. I never saw them. Finally, they sent a warrior out to kill me. And I gotta tell you, I have never come so close to dying. There's no finer fighter in the Imperium. They fight like demons."
+        },
+        {
+          "card": 608,
+          "speaker": "Duke Leto Atreides",
+          "text": "Desert power."
+        },
+        {
+          "cards": "609-610",
+          "speaker": "Duke Leto Atreides / Duncan Idaho",
+          "text": "- Duncan. Well done. - Thank you, my lord."
+        },
+        {
+          "cards": "611-612",
+          "speaker": "Atreides Guard",
+          "text": "Sire. Their leader has a knife he won't surrender, sire."
+        },
+        {
+          "card": 613,
+          "speaker": "Duncan Idaho",
+          "text": "It's a crysknife. It's sacred to his people."
+        },
+        {
+          "card": 614,
+          "speaker": "Duke Leto Atreides",
+          "text": "Let him pass."
+        },
+        {
+          "cards": "615-616",
+          "speaker": "Gurney Halleck",
+          "text": "Stop there. Hey! Hey!"
+        },
+        {
+          "cards": "617-620",
+          "speaker": "Duke Leto Atreides",
+          "text": "Stilgar. Welcome. Sir, I respect the personal dignity of any man that respects mine."
+        },
+        {
+          "card": 621,
+          "speaker": "Duncan Idaho",
+          "text": "Hold."
+        },
+        {
+          "cards": "622-624",
+          "speaker": "Duncan Idaho",
+          "text": "Thank you, Stilgar, for the gift of your body's moisture. We accept it in the spirit in which it was given."
+        },
+        {
+          "cards": "625-627",
+          "speaker": "Duke Leto Atreides",
+          "text": "I'm glad you've come. I believe your people and mine have much to offer one another."
+        },
+        {
+          "cards": "628-630",
+          "speaker": "Stilgar",
+          "text": "No, no, you are Outworlders. You come here for the spice, you take it, giving nothing in return."
+        },
+        {
+          "card": 631,
+          "speaker": "Duke Leto Atreides",
+          "text": "That's true."
+        },
+        {
+          "cards": "632-635",
+          "speaker": "Duke Leto Atreides",
+          "text": "I know you've suffered at the hands of the Harkonnen. Name what you want. If it's in my power to grant, I'll give it and ask for nothing."
+        },
+        {
+          "cards": "636-642",
+          "speaker": "Stilgar",
+          "text": "I ask for this. Do not seek our sietches. Do not trespass in our lands. The desert was ours long before you came. So, come and dig your spice, but when you have it, go back to this side of the Shield Wall and leave the desert to the Fremen."
+        },
+        {
+          "card": 643,
+          "speaker": "Gurney Halleck",
+          "text": "You will address the Duke as \"my lord\" or \"sire.\""
+        },
+        {
+          "cards": "644-651",
+          "speaker": "Duke Leto Atreides",
+          "text": "Gurney, just... just a moment. The Emperor has given me Arrakis as my fief to rule and protect. I cannot promise not to travel into the desert if duty compels me. But your sietches will be yours forever. And you will never be hunted while I govern here."
+        },
+        {
+          "cards": "652-653",
+          "speaker": "Stilgar",
+          "text": "That's very honourable. I must go. That's all I have to say to you."
+        },
+        {
+          "cards": "654-655",
+          "speaker": "Duke Leto Atreides",
+          "text": "Won't you stay? We would honour you."
+        },
+        {
+          "card": 656,
+          "speaker": "Stilgar",
+          "text": "Honour requires that I be elsewhere."
+        },
+        {
+          "card": 657,
+          "speaker": "Gurney Halleck",
+          "text": "I don't like him."
+        },
+        {
+          "card": 658,
+          "speaker": "Duncan Idaho",
+          "text": "Our plan bears fruit."
+        },
+        {
+          "card": 659,
+          "speaker": "Duke Leto Atreides",
+          "text": "But it will take time?"
+        },
+        {
+          "cards": "660-661",
+          "speaker": "Duncan Idaho",
+          "text": "Yes. It will take time."
+        }
+      ]
+    }
+  }
+}
