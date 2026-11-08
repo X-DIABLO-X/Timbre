@@ -106,16 +106,18 @@ function ingestSpec(spec) {
       const charSpan = document.createElement('span');
       charSpan.className = 'cwi-char';
       charSpan.textContent = ch;
+      charSpan.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+      charSpan.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
       span.appendChild(charSpan);
       chars.push(charSpan);
     }
     charNodes.set(w.word_id, chars);
 
-    const t = w.typography;
     span.style.setProperty('--cwi-speaker-color', w.speaker.color_hex);
-    span.style.setProperty('--cwi-wght', `${Math.round(400 + k * (t.wght - 400))}`);
-    span.style.setProperty('--cwi-wdth', `${Math.round(100 + k * (t.wdth - 100))}`);
-    span.style.setProperty('--cwi-grad', `${Math.round(k * t.grad)}`);
+    // Neutral font variation axes during initial read-ahead
+    span.style.setProperty('--cwi-wght', '400');
+    span.style.setProperty('--cwi-wdth', '100');
+    span.style.setProperty('--cwi-grad', '0');
 
     captionBoxEl.appendChild(span);
     wordNodes.set(w.word_id, span);
@@ -153,6 +155,9 @@ function tickOverlay() {
             chars[i].style.color = 'var(--cwi-readahead-color, #B0B5BC)';
             chars[i].style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
           }
+          el.style.setProperty('--cwi-wght', '400');
+          el.style.setProperty('--cwi-wdth', '100');
+          el.style.setProperty('--cwi-grad', '0');
           wordPhases.set(wordId, 'pre');
         }
         continue;
@@ -168,6 +173,9 @@ function tickOverlay() {
             chars[i].style.color = 'var(--cwi-speaker-color, #4FC3F7)';
             chars[i].style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
           }
+          el.style.setProperty('--cwi-wght', `${Math.round(400 + k * (t.wght - 400))}`);
+          el.style.setProperty('--cwi-wdth', `${Math.round(100 + k * (t.wdth - 100))}`);
+          el.style.setProperty('--cwi-grad', `${Math.round(k * t.grad)}`);
           wordPhases.set(wordId, 'post');
         }
         continue;
@@ -181,6 +189,11 @@ function tickOverlay() {
       const sPeak = 1.0 + k * Math.max(0.15, (t.crest_scale * t.pop_scale - 1.0));
       const holdPeakEm = k * (t.hold_lift_em || 0.0);
       const sigma = Math.max(0.18, 1.2 / Math.max(1, numChars));
+
+      // Lock typography parameters upon active onset
+      el.style.setProperty('--cwi-wght', `${Math.round(400 + k * (t.wght - 400))}`);
+      el.style.setProperty('--cwi-wdth', `${Math.round(100 + k * (t.wdth - 100))}`);
+      el.style.setProperty('--cwi-grad', `${Math.round(k * t.grad)}`);
 
       for (let i = 0; i < numChars; i++) {
         const charEl = chars[i];
@@ -196,7 +209,7 @@ function tickOverlay() {
 
         charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
 
-        if (tau <= progress + 0.4 / Math.max(1, numChars)) {
+        if (progress >= (i / Math.max(1, numChars))) {
           charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
         } else {
           charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';

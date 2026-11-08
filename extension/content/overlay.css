@@ -25,6 +25,7 @@
   z-index: 2147483647;
   overflow: hidden;
   --cwi-vh: 1vh;
+  --cwi-readahead-color: #B0B5BC;
 }
 
 .cwi-work-area {
@@ -45,6 +46,7 @@
 }
 
 .cwi-caption-box {
+  --cwi-readahead-color: #B0B5BC;
   background-color: rgba(0, 0, 0, 0.90);
   border-radius: 10px;
   padding: 0.42em 0.92em;

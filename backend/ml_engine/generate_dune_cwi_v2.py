@@ -181,10 +181,15 @@ def align_words_to_acoustic_waveform(
 
     # PASS 1: Lock to true acoustic words extracted directly from audio via faster-whisper
     if acoustic_words:
-        win_min = max(0, seg_start_ms - 3500)
-        win_max = seg_end_ms + 2500
+        win_min = max(0, seg_start_ms - 350)
+        win_max = seg_end_ms + 600
+        # Only accept high-confidence candidates (prob >= 0.38) with plausible word durations (60ms <= dur <= 2000ms)
         candidates = [
-            w for w in acoustic_words if win_min <= int(w["start_ms"]) <= win_max
+            w
+            for w in acoustic_words
+            if win_min <= int(w["start_ms"]) <= win_max
+            and float(w.get("prob", 1.0)) >= 0.38
+            and 60 <= (int(w["end_ms"]) - int(w["start_ms"])) <= 2000
         ]
         if candidates:
             matches: List[Optional[Tuple[int, int]]] = [None] * n_words
@@ -206,18 +211,19 @@ def align_words_to_acoustic_waveform(
 
                 # Fill leading unmatched words backwards before first_idx
                 if first_idx > 0:
-                    curr_e = matches[first_idx][0]  # type: ignore
-                    for i in range(first_idx - 1, -1, -1):
-                        dur = 180
-                        s = max(0, curr_e - dur)
-                        matches[i] = (s, curr_e)
-                        curr_e = s
+                    first_start = matches[first_idx][0]  # type: ignore
+                    start_bound = min(seg_start_ms - 150, first_start - first_idx * 120)
+                    step = max(80, (first_start - start_bound) // first_idx)
+                    for i in range(first_idx):
+                        s = start_bound + i * step
+                        e = s + step if i < first_idx - 1 else first_start
+                        matches[i] = (s, max(s + 80, e))
 
                 # Fill trailing unmatched words forwards after last_idx
                 if last_idx < n_words - 1:
                     curr_s = matches[last_idx][1]  # type: ignore
                     for i in range(last_idx + 1, n_words):
-                        dur = 180
+                        dur = 140
                         e = curr_s + dur
                         matches[i] = (curr_s, e)
                         curr_s = e
@@ -233,7 +239,27 @@ def align_words_to_acoustic_waveform(
                         for k in range(i, next_m):
                             s = gap_start + (k - i) * step
                             e = s + step
-                            matches[k] = (s, e)
+                            matches[k] = (s, max(s + 80, e))
+
+                # Clamp: Prevent premature onset before vocal card onset
+                if matches[0] is not None and matches[0][0] < seg_start_ms - 250:
+                    delta = (seg_start_ms - 250) - matches[0][0]
+                    for mi in range(n_words):
+                        if matches[mi] is not None:
+                            matches[mi] = (matches[mi][0] + delta, matches[mi][1] + delta)
+
+                # Ensure strict monotonic order: end_ms > start_ms for every word
+                for mi in range(n_words):
+                    if matches[mi] is not None:
+                        s, e = matches[mi]  # type: ignore
+                        if e <= s:
+                            e = s + 100
+                        if mi > 0 and matches[mi - 1] is not None:
+                            prev_e = matches[mi - 1][1]  # type: ignore
+                            if s < prev_e:
+                                s = prev_e
+                                e = max(s + 80, e)
+                        matches[mi] = (s, e)
 
                 final_spans = [m for m in matches if m is not None]
                 if len(final_spans) == n_words:

@@ -70,6 +70,7 @@ export class CwiRenderer {
         z-index: 2147483647;
         overflow: hidden;
         --cwi-vh: 1vh;
+        --cwi-readahead-color: #B0B5BC;
       }
 
       .cwi-work-area {
@@ -90,6 +91,7 @@ export class CwiRenderer {
       }
 
       .cwi-caption-box {
+        --cwi-readahead-color: #B0B5BC;
         background-color: rgba(0, 0, 0, 0.86);
         border-radius: 6px;
         padding: 0.38em 0.88em;
@@ -313,12 +315,20 @@ export class CwiRenderer {
         const charSpan = document.createElement('span');
         charSpan.className = 'cwi-char';
         charSpan.textContent = ch;
+        charSpan.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+        charSpan.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
         span.appendChild(charSpan);
         chars.push(charSpan);
       }
       this.charNodes.set(word.word_id, chars);
 
       bindWordCSSVariables(span, word, currentTimeMs, this.profile);
+      // Pre-onset neutral typography invariant: words in Read-Ahead start at standard baseline font axes
+      if (currentTimeMs < word.start_ms) {
+        span.style.setProperty('--cwi-wght', '400');
+        span.style.setProperty('--cwi-wdth', '100');
+        span.style.setProperty('--cwi-grad', '0');
+      }
       this.captionBoxEl.appendChild(span);
       this.wordNodes.set(word.word_id, span);
       this.wordSpecs.set(word.word_id, word);
@@ -366,6 +376,9 @@ export class CwiRenderer {
             chars[i].style.color = 'var(--cwi-readahead-color, #B0B5BC)';
             chars[i].style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
           }
+          el.style.setProperty('--cwi-wght', '400');
+          el.style.setProperty('--cwi-wdth', '100');
+          el.style.setProperty('--cwi-grad', '0');
           this.wordPhases.set(wordId, 'pre');
         }
         continue;
@@ -385,6 +398,16 @@ export class CwiRenderer {
             chars[i].style.color = enableColor ? 'var(--cwi-speaker-color, #4FC3F7)' : '#FFFFFF';
             chars[i].style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
           }
+          const weightK = this.profile.enableWeight ? k : 0.0;
+          let wght = Math.round(400 + weightK * (t.wght - 400));
+          if (this.profile.isSafari && wght >= 398 && wght <= 402) {
+            wght = 404;
+          }
+          const wdth = Math.round(100 + weightK * (t.wdth - 100));
+          const grad = Math.round(weightK * t.grad);
+          el.style.setProperty('--cwi-wght', `${wght}`);
+          el.style.setProperty('--cwi-wdth', `${wdth}`);
+          el.style.setProperty('--cwi-grad', `${grad}`);
           this.wordPhases.set(wordId, 'post');
         }
         continue;
@@ -398,6 +421,18 @@ export class CwiRenderer {
       const sPeak = 1.0 + k * Math.max(0.15, (t.crest_scale * t.pop_scale - 1.0));
       const holdPeakEm = enableHold ? k * t.hold_lift_em : 0.0;
       const sigma = Math.max(0.18, 1.2 / Math.max(1, numChars));
+
+      // Synchronize variable font weight and width upon onset
+      const weightK = this.profile.enableWeight ? k : 0.0;
+      let wght = Math.round(400 + weightK * (t.wght - 400));
+      if (this.profile.isSafari && wght >= 398 && wght <= 402) {
+        wght = 404;
+      }
+      const wdth = Math.round(100 + weightK * (t.wdth - 100));
+      const grad = Math.round(weightK * t.grad);
+      el.style.setProperty('--cwi-wght', `${wght}`);
+      el.style.setProperty('--cwi-wdth', `${wdth}`);
+      el.style.setProperty('--cwi-grad', `${grad}`);
 
       for (let i = 0; i < numChars; i++) {
         const charEl = chars[i];
@@ -414,7 +449,8 @@ export class CwiRenderer {
         charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
 
         if (enableColor) {
-          if (tau <= progress + 0.4 / Math.max(1, numChars)) {
+          // Horizontal color wipe strictly triggers as progress reaches character threshold
+          if (progress >= (i / Math.max(1, numChars))) {
             charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
           } else {
             charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
