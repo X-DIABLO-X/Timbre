@@ -1,62 +1,169 @@
-/**
- * Deterministic DOM/CSS Renderer (CwiRenderer)
- * References:
- *   - docs/07_client_and_rendering/cwi_dom_renderer.md
- *   - docs/00_overview/folders.md
- *   - docs/01_contracts_and_schemas/typography_and_math_constants.md
- */
-
-import { CaptionSpec, NonSpeechEvent, WordToken } from './types';
+import { CaptionSpec, WordToken } from './types';
 import { RenderProfile, DEFAULT_CWI_PROFILE, detectSafari } from './profiles';
+import { bindWordCSSVariables } from './css_scheduler';
+import { PRESENTATION_OFFSET_MS } from './dual_clock';
 
-export type { UserRenderProfile, RenderProfile } from './profiles';
+type WordRenderPhase = 'unmounted' | 'pre' | 'active' | 'post';
 
+/**
+ * Deterministic 60-120 FPS CwiRenderer.
+ * Fixes Issue #2 (audio-to-subtitle sync lag & animation stutter):
+ *   1. Removes competing CSS @keyframes from .cwi-word so tick(currentTimeMs) has 100%
+ *      frame-accurate authority over GPU-composited translate3d(), scale3d(), and background-position.
+ *   2. Evaluates word onset directly against currentTimeMs == word.start_ms (zero 420ms or 1750ms onset lag),
+ *      while using presentationOffsetMs (1750ms) strictly as the pre-onset Read-Ahead visibility window!
+ *   3. Caches each word's render phase ('pre' | 'active' | 'post') so static pre-onset and post-onset
+ *      words incur ZERO DOM writes during requestAnimationFrame ticks.
+ */
 export class CwiRenderer {
-  private hostContainer: HTMLElement;
   private shadowRoot: ShadowRoot;
+  private styleEl: HTMLStyleElement;
   private workAreaEl: HTMLDivElement;
   private captionBoxEl: HTMLDivElement;
-  private styleEl: HTMLStyleElement;
 
-  private allSpecs: CaptionSpec[] = [];
+  private specs: CaptionSpec[] = [];
   private activeSegmentId: string | null = null;
   private wordNodes: Map<string, HTMLSpanElement> = new Map();
-  private wordTokens: Map<string, WordToken> = new Map();
-  private sfxNodes: Map<string, HTMLSpanElement> = new Map();
+  private wordSpecs: Map<string, WordToken> = new Map();
+  private wordPhases: Map<string, WordRenderPhase> = new Map();
   private lockedWordIds: Set<string> = new Set();
+
   private profile: RenderProfile;
-  private presentationOffsetMs: number = 1750;
-  private static readonly MIN_READ_AHEAD_FLOOR_MS = 420;
+  private presentationOffsetMs: number = PRESENTATION_OFFSET_MS;
 
   constructor(hostContainer: HTMLElement, initialProfile?: Partial<RenderProfile>) {
-    this.hostContainer = hostContainer;
-    const isSafari = initialProfile?.isSafari ?? detectSafari();
-
     this.profile = {
       ...DEFAULT_CWI_PROFILE,
+      isSafari: detectSafari(),
       ...initialProfile,
-      isSafari,
-      intensity: Math.max(0.0, Math.min(1.0, initialProfile?.intensity ?? DEFAULT_CWI_PROFILE.intensity)),
     };
 
-    // Attach or reuse open Shadow DOM
     this.shadowRoot =
       hostContainer.shadowRoot ?? hostContainer.attachShadow({ mode: 'open' });
+    this.shadowRoot.innerHTML = '';
 
-    // Inject scoped stylesheet with imported variable font
     this.styleEl = document.createElement('style');
     this.styleEl.textContent = CwiRenderer.getDefaultStylesheet();
     this.shadowRoot.appendChild(this.styleEl);
 
-    // RULE 1: Strictly lower 20% work area
     this.workAreaEl = document.createElement('div');
     this.workAreaEl.className = 'cwi-work-area';
 
-    // RULE 2: 90% opacity black caption box
     this.captionBoxEl = document.createElement('div');
     this.captionBoxEl.className = 'cwi-caption-box';
+    this.captionBoxEl.style.display = 'none';
+
     this.workAreaEl.appendChild(this.captionBoxEl);
     this.shadowRoot.appendChild(this.workAreaEl);
+  }
+
+  public static getDefaultStylesheet(): string {
+    return `
+      @import url('https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,slnt,wdth,wght,GRAD,XOPQ,XTRA,YOPQ,YTAS,YTDE,YTFI,YTLC,YTUC@8..144,-10..0,25..151,100..1000,-200..150,27..175,323..603,25..135,649..854,-305..-98,560..788,416..570,528..760&display=swap');
+
+      :host {
+        all: initial;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 2147483647;
+        overflow: hidden;
+        --cwi-vh: 1vh;
+      }
+
+      .cwi-work-area {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: 80%;
+        height: 20%;
+        max-height: 20%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 0.4% 4%;
+        box-sizing: border-box;
+        pointer-events: none;
+      }
+
+      .cwi-caption-box {
+        background-color: rgba(0, 0, 0, 0.90);
+        border-radius: 10px;
+        padding: 0.42em 0.92em;
+        max-width: 92%;
+        max-height: 96%;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: center;
+        gap: 0.24em 0.34em;
+        box-sizing: border-box;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+        contain: layout style;
+      }
+
+      .cwi-word {
+        position: relative;
+        display: inline-block;
+        font-family: 'Roboto Flex', system-ui, -apple-system, sans-serif;
+        font-size: calc(4.8 * var(--cwi-vh, 1vh));
+        line-height: 1.16;
+        font-optical-sizing: none;
+        font-variation-settings:
+          'wght' var(--cwi-wght, 400),
+          'wdth' var(--cwi-wdth, 100),
+          'GRAD' var(--cwi-grad, 0),
+          'opsz' var(--cwi-opsz, 14),
+          'slnt' var(--cwi-slnt, 0),
+          'XTRA' var(--cwi-xtra, 468),
+          'XOPQ' var(--cwi-xopq, 96),
+          'YOPQ' var(--cwi-yopq, 79),
+          'YTAS' var(--cwi-ytas, 750),
+          'YTDE' var(--cwi-ytde, -203),
+          'YTUC' 712,
+          'YTLC' 514,
+          'YTFI' 738;
+
+        /* Soft 2.5% feather edge on the horizontal liquid wipe for cinema-grade smoothness */
+        background-image: linear-gradient(
+          90deg,
+          var(--cwi-speaker-color, #4FC3F7) 0%,
+          var(--cwi-speaker-color, #4FC3F7) 48.75%,
+          var(--cwi-readahead-color, #B0B5BC) 51.25%,
+          var(--cwi-readahead-color, #B0B5BC) 100%
+        );
+        background-size: 200% 100%;
+        background-position: 100% 0%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+
+        transform-origin: center bottom;
+        transform: translate3d(0, 0em, 0) scale3d(1, 1, 1);
+        will-change: transform, background-position;
+        backface-visibility: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .cwi-sfx-badge {
+        font-family: 'Roboto Flex', sans-serif;
+        font-size: calc(3.6 * var(--cwi-vh, 1vh));
+        color: #E8EAED;
+        font-variation-settings: 'wght' 520, 'wdth' 96, 'slnt' -10;
+        padding: 0.1em 0.45em;
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        border-radius: 5px;
+        margin-right: 0.32em;
+      }
+    `;
+  }
+
+  private static smoothstep(edge0: number, edge1: number, x: number): number {
+    const t = Math.max(0.0, Math.min(1.0, (x - edge0) / Math.max(1e-5, edge1 - edge0)));
+    return t * t * (3.0 - 2.0 * t);
   }
 
   public getPresentationTimeMs(acousticTimeMs: number): number {
@@ -68,7 +175,7 @@ export class CwiRenderer {
   }
 
   public setPresentationOffsetMs(offsetMs: number): void {
-    this.presentationOffsetMs = Math.max(CwiRenderer.MIN_READ_AHEAD_FLOOR_MS, Math.min(5000, offsetMs));
+    this.presentationOffsetMs = Math.max(0, offsetMs);
   }
 
   public getProfile(): RenderProfile {
@@ -76,278 +183,252 @@ export class CwiRenderer {
   }
 
   public setProfile(updatedProfile: Partial<RenderProfile>): void {
-    this.profile = {
-      ...this.profile,
-      ...updatedProfile,
-      intensity: Math.max(0.0, Math.min(1.0, updatedProfile.intensity ?? this.profile.intensity)),
-    };
-    // Re-apply typography variables when profile or intensity changes
-    this.applyWordTypographyVariables();
+    this.profile = { ...this.profile, ...updatedProfile };
+    // Re-bind CSS variables on currently mounted words without rebuilding DOM
+    for (const [wordId, word] of this.wordSpecs.entries()) {
+      const el = this.wordNodes.get(wordId);
+      if (el) {
+        bindWordCSSVariables(el, word, word.start_ms, this.profile);
+        this.wordPhases.set(wordId, 'unmounted');
+      }
+    }
   }
 
   public setViewportHeightPx(heightPx: number): void {
-    const vhPx = heightPx / 100;
-    this.hostContainer.style.setProperty('--cwi-vh', `${vhPx}px`);
+    if (heightPx > 0) {
+      const vhPx = heightPx / 100.0;
+      this.workAreaEl.style.setProperty('--cwi-vh', `${vhPx.toFixed(3)}px`);
+    }
   }
 
   public setCaptionSpecs(specs: CaptionSpec[]): void {
-    this.allSpecs = [...specs].sort((a, b) => {
-      const aStart = a.words?.[0]?.start_ms ?? a.non_speech_events?.[0]?.start_ms ?? 0;
-      const bStart = b.words?.[0]?.start_ms ?? b.non_speech_events?.[0]?.start_ms ?? 0;
+    this.specs = [...specs].sort((a, b) => {
+      const aStart = a.words[0]?.start_ms ?? a.non_speech_events[0]?.start_ms ?? 0;
+      const bStart = b.words[0]?.start_ms ?? b.non_speech_events[0]?.start_ms ?? 0;
       return aStart - bStart;
     });
+    this.clearActiveSegment();
   }
 
   public ingestCaptionSpec(spec: CaptionSpec, currentAcousticTimeMs?: number): void {
-    const idx = this.allSpecs.findIndex((s) => s.segment_id === spec.segment_id);
-    if (idx >= 0) {
-      this.allSpecs[idx] = spec;
+    const existingIdx = this.specs.findIndex((s) => s.segment_id === spec.segment_id);
+    if (existingIdx >= 0) {
+      this.specs[existingIdx] = spec;
     } else {
-      this.allSpecs.push(spec);
-      this.allSpecs.sort((a, b) => {
-        const aStart = a.words?.[0]?.start_ms ?? a.non_speech_events?.[0]?.start_ms ?? 0;
-        const bStart = b.words?.[0]?.start_ms ?? b.non_speech_events?.[0]?.start_ms ?? 0;
+      this.specs.push(spec);
+      this.specs.sort((a, b) => {
+        const aStart = a.words[0]?.start_ms ?? 0;
+        const bStart = b.words[0]?.start_ms ?? 0;
         return aStart - bStart;
       });
     }
 
-    if (spec.presentation_offset_ms) {
-      this.presentationOffsetMs = spec.presentation_offset_ms;
-    }
-
-    if (currentAcousticTimeMs != null) {
-      this.tick(currentAcousticTimeMs);
+    // If this spec is currently mounted or no spec is mounted yet, reconcile live nodes
+    if (this.activeSegmentId === spec.segment_id || this.specs.length === 1) {
+      const refTimeMs =
+        currentAcousticTimeMs !== undefined
+          ? this.getPresentationTimeMs(currentAcousticTimeMs)
+          : (spec.words[0]?.start_ms ?? 0) - this.presentationOffsetMs;
+      this.mountOrUpdateSegment(spec, refTimeMs);
     }
   }
 
-  private findActiveSpec(timeMs: number): CaptionSpec | null {
-    if (this.allSpecs.length === 0) return null;
+  /**
+   * Finds the single active CaptionSpec for currentTimeMs:
+   * - Enters Read-Ahead up to presentationOffsetMs (1750ms) before firstWord.start_ms,
+   *   clamped so it NEVER preempts the previous segment while the previous segment is still being spoken!
+   * - Remains visible until 320ms after lastWord.end_ms (or until the next segment's speech begins).
+   */
+  private findActiveSpecForTime(currentTimeMs: number): CaptionSpec | null {
+    const n = this.specs.length;
+    if (n === 0) return null;
 
-    const offset = this.presentationOffsetMs;
-    const lingerMs = 600;
+    for (let i = 0; i < n; i++) {
+      const spec = this.specs[i];
+      if (!spec.words || spec.words.length === 0) continue;
 
-    let candidate: CaptionSpec | null = null;
+      const firstStart = spec.words[0].start_ms;
+      const lastEnd = spec.words[spec.words.length - 1].end_ms;
 
-    for (let i = 0; i < this.allSpecs.length; i++) {
-      const spec = this.allSpecs[i];
-      const words = spec.words || [];
-      const events = spec.non_speech_events || [];
-      if (words.length === 0 && events.length === 0) continue;
+      // Prevent Read-Ahead of segment i from overlapping active speech of segment i-1
+      const prevEnd =
+        i > 0 && this.specs[i - 1].words.length > 0
+          ? this.specs[i - 1].words[this.specs[i - 1].words.length - 1].end_ms + 120
+          : 0;
 
-      const segStart = words.length > 0 ? words[0].start_ms : events[0].start_ms;
-      const segEnd = words.length > 0 ? words[words.length - 1].end_ms : events[events.length - 1].end_ms;
-      const readAheadOnset = segStart - offset;
-      const displayEnd = segEnd + lingerMs;
+      const readAheadWindowStart = Math.max(prevEnd, firstStart - this.presentationOffsetMs);
 
-      if (timeMs >= readAheadOnset && timeMs <= displayEnd) {
-        if (!candidate) {
-          candidate = spec;
-        } else {
-          const candWords = candidate.words || [];
-          const candEnd = candWords.length > 0 ? candWords[candWords.length - 1].end_ms : 0;
-          if (timeMs > candEnd) {
-            candidate = spec;
-          }
+      const nextFirstStart =
+        i + 1 < n && this.specs[i + 1].words.length > 0
+          ? this.specs[i + 1].words[0].start_ms
+          : Number.POSITIVE_INFINITY;
+
+      const segmentHoldEnd = Math.min(lastEnd + 360, nextFirstStart);
+
+      if (currentTimeMs >= readAheadWindowStart && currentTimeMs <= segmentHoldEnd) {
+        return spec;
+      }
+    }
+    return null;
+  }
+
+  private mountOrUpdateSegment(spec: CaptionSpec, currentTimeMs: number): void {
+    if (this.activeSegmentId !== spec.segment_id) {
+      this.clearActiveSegment();
+      this.activeSegmentId = spec.segment_id;
+    }
+
+    this.captionBoxEl.style.display = spec.words.length > 0 ? 'flex' : 'none';
+
+    for (const word of spec.words) {
+      if (currentTimeMs >= word.start_ms) {
+        this.lockedWordIds.add(word.word_id);
+      }
+
+      const existingEl = this.wordNodes.get(word.word_id);
+      if (existingEl) {
+        // Immutable post-onset text rule: never mutate text after vocal onset
+        if (this.lockedWordIds.has(word.word_id)) {
+          continue;
         }
+        if (existingEl.textContent !== word.text) {
+          existingEl.textContent = word.text;
+        }
+        bindWordCSSVariables(existingEl, word, currentTimeMs, this.profile);
+        this.wordSpecs.set(word.word_id, word);
+        continue;
       }
-    }
 
-    return candidate;
-  }
-
-  private switchActiveSegment(spec: CaptionSpec | null): void {
-    if (!spec) {
-      if (this.activeSegmentId !== null) {
-        this.clearActiveSegment();
-      }
-      return;
-    }
-
-    if (spec.segment_id === this.activeSegmentId) {
-      return;
-    }
-
-    this.clearActiveSegment();
-    this.activeSegmentId = spec.segment_id;
-
-    this.captionBoxEl.style.display = 'inline-flex';
-    this.captionBoxEl.style.opacity = '1';
-
-    // Mount Non-Speech Events
-    for (const ev of spec.non_speech_events || []) {
-      const sfxKey = `${ev.type}_${ev.start_ms}_${ev.end_ms}`;
-      const badge = document.createElement('span');
-      badge.className = 'cwi-sfx-badge';
-      badge.dataset.sfxKey = sfxKey;
-      badge.dataset.startMs = `${ev.start_ms}`;
-      badge.dataset.endMs = `${ev.end_ms}`;
-      badge.textContent = ev.label;
-      this.captionBoxEl.appendChild(badge);
-      this.sfxNodes.set(sfxKey, badge);
-    }
-
-    // Mount Word Tokens
-    for (const word of spec.words || []) {
       const span = document.createElement('span');
       span.className = 'cwi-word';
       span.dataset.wordId = word.word_id;
       span.dataset.locale = spec.locale || 'en';
       span.textContent = word.text;
 
-      span.style.setProperty('--cwi-speaker-color', word.speaker.color_hex);
-      span.style.setProperty('--cwi-readahead-color', '#B0B5BC');
-
+      bindWordCSSVariables(span, word, currentTimeMs, this.profile);
       this.captionBoxEl.appendChild(span);
       this.wordNodes.set(word.word_id, span);
-      this.wordTokens.set(word.word_id, word);
+      this.wordSpecs.set(word.word_id, word);
+      this.wordPhases.set(word.word_id, 'unmounted');
     }
-
-    // Bind variable font axes ONCE on mount to prevent layout reflow during animation
-    this.applyWordTypographyVariables();
   }
 
-  private applyWordTypographyVariables(): void {
+  /**
+   * High-frequency 60-120 FPS animation tick driven directly by <video>.currentTime * 1000.
+   * Only mutates the 1-2 words actively being spoken in the current frame;
+   * pre-onset and post-onset words are cached and skipped for zero DOM layout thrashing.
+   */
+  public tick(currentTimeMs: number): void {
+    const targetSpec = this.findActiveSpecForTime(currentTimeMs);
+    if (!targetSpec) {
+      if (this.activeSegmentId !== null) {
+        this.clearActiveSegment();
+      }
+      return;
+    }
+
+    if (this.activeSegmentId !== targetSpec.segment_id) {
+      this.mountOrUpdateSegment(targetSpec, currentTimeMs);
+    }
+
     const k = Math.max(0.0, Math.min(1.0, this.profile.intensity));
-    for (const [wordId, word] of this.wordTokens.entries()) {
+    const enableColor = this.profile.enableColorTurn;
+    const enablePop = this.profile.enablePop;
+    const enableCrest = this.profile.enableCrest;
+    const enableHold = this.profile.enableHold;
+
+    for (const [wordId, word] of this.wordSpecs.entries()) {
       const el = this.wordNodes.get(wordId);
       if (!el) continue;
 
-      const t = word.typography;
-      let wght = this.profile.enableWeight ? Math.round(400 + k * (t.wght - 400)) : 400;
-      if (this.profile.isSafari && wght >= 398 && wght <= 402) {
-        wght = 404;
-      }
-      const wdth = Math.round(100 + k * ((t.wdth ?? 100) - 100));
-      const grad = Math.round(k * (t.grad ?? 0));
+      const prevPhase = this.wordPhases.get(wordId);
 
-      el.style.fontVariationSettings = `'wght' ${wght}, 'wdth' ${wdth}, 'GRAD' ${grad}, 'opsz' ${t.opsz ?? 14}, 'slnt' ${t.slnt ?? 0}, 'XTRA' ${t.xtra ?? 468}, 'XOPQ' ${t.xopq ?? 96}, 'YOPQ' ${t.yopq ?? 79}, 'YTAS' ${t.ytas ?? 750}, 'YTDE' ${t.ytde ?? -203}`;
+      // STATE 1: Read-Ahead Layer (currentTimeMs < word.start_ms)
+      if (currentTimeMs < word.start_ms) {
+        if (prevPhase !== 'pre') {
+          el.style.backgroundPosition = enableColor ? '100% 0%' : '0% 0%';
+          el.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
+          this.wordPhases.set(wordId, 'pre');
+        }
+        continue;
+      }
+
+      if (!this.lockedWordIds.has(wordId)) {
+        this.lockedWordIds.add(wordId);
+        el.dataset.cwiLocked = 'true';
+      }
+
+      const t = word.typography;
+      const sSustain = enableCrest ? 1.0 + k * (t.crest_sustain_scale - 1.0) : 1.0;
+
+      // STATE 3: Post-Onset / Completed Word (currentTimeMs >= word.end_ms)
+      if (currentTimeMs >= word.end_ms) {
+        if (prevPhase !== 'post') {
+          el.style.backgroundPosition = '0% 0%';
+          const sFinal = sSustain.toFixed(4);
+          el.style.transform = `translate3d(0, 0em, 0) scale3d(${sFinal}, ${sFinal}, 1)`;
+          this.wordPhases.set(wordId, 'post');
+        }
+        continue;
+      }
+
+      // STATE 2: Active Word Being Spoken (word.start_ms <= currentTimeMs < word.end_ms)
+      this.wordPhases.set(wordId, 'active');
+      const dur = Math.max(80, word.duration_ms);
+      const progress = Math.max(0.0, Math.min(1.0, (currentTimeMs - word.start_ms) / dur));
+
+      // Channel 1: Smooth horizontal Colour Turn wipe
+      if (enableColor) {
+        const wipePos = Math.max(0.0, (1.0 - progress) * 100.0);
+        el.style.backgroundPosition = `${wipePos.toFixed(2)}% 0%`;
+      } else {
+        el.style.backgroundPosition = '0% 0%';
+      }
+
+      // Channels 2 & 3: C2-Continuous Hermite Pop (1.15x) + Crest Peak -> 0.70 Sustain
+      const popMult = enablePop ? 1.0 + k * (t.pop_scale - 1.0) : 1.0;
+      const crestPeak = enableCrest ? 1.0 + k * (t.crest_scale - 1.0) : 1.0;
+      const sPeak = popMult * crestPeak;
+
+      let scaleNow: number;
+      if (progress <= 0.22) {
+        const u = CwiRenderer.smoothstep(0.0, 0.22, progress);
+        scaleNow = 1.0 + u * (sPeak - 1.0);
+      } else if (progress <= 0.52) {
+        const u = CwiRenderer.smoothstep(0.22, 0.52, progress);
+        scaleNow = sPeak + u * (sSustain - sPeak);
+      } else {
+        scaleNow = sSustain;
+      }
+
+      // Channel 5: Smooth Sinusoidal Vertical Hold Lift (-0.525em)
+      const holdPeakEm = enableHold ? k * t.hold_lift_em : 0.0;
+      const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI);
+
+      const sStr = scaleNow.toFixed(4);
+      const yStr = yLiftEm.toFixed(4);
+      el.style.transform = `translate3d(0, ${yStr}em, 0) scale3d(${sStr}, ${sStr}, 1)`;
     }
   }
 
   private clearActiveSegment(): void {
     this.captionBoxEl.innerHTML = '';
     this.captionBoxEl.style.display = 'none';
-    this.captionBoxEl.style.opacity = '0';
-    this.wordNodes.clear();
-    this.wordTokens.clear();
-    this.sfxNodes.clear();
-    this.lockedWordIds.clear();
     this.activeSegmentId = null;
-  }
-
-  /**
-   * High-Performance 60-144fps Kinetic Animation Tick:
-   * Only manipulates GPU-accelerated background-position (wiping) and transform (scale & lift).
-   * Free from font-shaping layout reflows.
-   */
-  public tick(currentTimeMs: number): void {
-    const activeSpec = this.findActiveSpec(currentTimeMs);
-    this.switchActiveSegment(activeSpec);
-
-    if (!activeSpec) {
-      return;
-    }
-
-    const k = Math.max(0.0, Math.min(1.0, this.profile.intensity));
-
-    // Update SFX badges
-    for (const [, badge] of this.sfxNodes.entries()) {
-      const startMs = Number(badge.dataset.startMs || 0);
-      const endMs = Number(badge.dataset.endMs || 0);
-      if (currentTimeMs >= startMs - 200 && currentTimeMs <= endMs + 400) {
-        badge.style.display = 'inline-block';
-        badge.style.opacity = '1';
-      } else {
-        badge.style.opacity = '0.35';
-      }
-    }
-
-    // Animate active words
-    for (const [wordId, word] of this.wordTokens.entries()) {
-      const el = this.wordNodes.get(wordId);
-      if (!el) continue;
-
-      const wordStart = word.start_ms;
-      const wordEnd = word.end_ms;
-      const wordDur = Math.max(1, word.duration_ms);
-      const t = word.typography;
-
-      if (currentTimeMs < wordStart) {
-        // STATE 1: Read-Ahead Layer
-        el.style.backgroundPosition = '100% 0%'; // Full neutral grey #B0B5BC
-        el.style.transform = 'translateY(0em) scale(1.0)';
-        delete el.dataset.cwiLocked;
-      } else if (currentTimeMs <= wordEnd) {
-        // STATE 2: Active Spoken Utterance
-        if (!this.lockedWordIds.has(wordId)) {
-          this.lockedWordIds.add(wordId);
-          el.dataset.cwiLocked = 'true';
-        }
-
-        const progress = Math.max(0.0, Math.min(1.0, (currentTimeMs - wordStart) / wordDur));
-
-        // CHANNEL 1: Colour Turn wipe (smooth liquid wipe into speaker color)
-        if (this.profile.enableColorTurn) {
-          const wipePos = Math.max(0, Math.min(100, (1.0 - progress) * 100));
-          el.style.backgroundPosition = `${wipePos.toFixed(2)}% 0%`;
-        } else {
-          el.style.backgroundPosition = '0% 0%';
-        }
-
-        // CHANNELS 2 & 3: Smooth spring Pop impulse + Crest volume envelope
-        const popVal = this.profile.enablePop ? (t.pop_scale ?? 1.15) : 1.0;
-        const crestPeak = this.profile.enableCrest ? (t.crest_scale ?? 1.0) : 1.0;
-        const crestSustain = this.profile.enableCrest ? (t.crest_sustain_scale ?? 1.0) : 1.0;
-
-        const sPeak = 1.0 + k * ((popVal * crestPeak) - 1.0);
-        const sSustain = 1.0 + k * (crestSustain - 1.0);
-
-        let scale = 1.0;
-        if (progress <= 0.18) {
-          // Cubic ease-out spring impulse
-          const tau = progress / 0.18;
-          const easeOut = 1.0 - Math.pow(1.0 - tau, 3);
-          scale = 1.0 + easeOut * (sPeak - 1.0);
-        } else if (progress <= 0.38) {
-          // Smooth Hermite settle to sustain
-          const tau = (progress - 0.18) / 0.20;
-          const smoothStep = tau * tau * (3.0 - 2.0 * tau);
-          scale = sPeak - smoothStep * (sPeak - sSustain);
-        } else {
-          scale = sSustain;
-        }
-
-        // CHANNEL 5: Hold Lift
-        let holdEm = 0;
-        if (this.profile.enableHold && word.prosody?.isolated_silence_hold) {
-          holdEm = k * (t.hold_lift_em ?? -0.525);
-        }
-
-        el.style.transform = `translateY(${holdEm.toFixed(4)}em) scale(${scale.toFixed(4)})`;
-      } else {
-        // STATE 3: Post-Onset Spoken Word (Completed)
-        if (!this.lockedWordIds.has(wordId)) {
-          this.lockedWordIds.add(wordId);
-          el.dataset.cwiLocked = 'true';
-        }
-
-        el.style.backgroundPosition = '0% 0%'; // Full speaker color
-        const crestSustain = this.profile.enableCrest ? (t.crest_sustain_scale ?? 1.0) : 1.0;
-        const sSustain = 1.0 + k * (crestSustain - 1.0);
-        el.style.transform = `translateY(0em) scale(${sSustain.toFixed(4)})`;
-      }
-    }
+    this.wordNodes.clear();
+    this.wordSpecs.clear();
+    this.wordPhases.clear();
   }
 
   public clear(): void {
+    this.specs = [];
+    this.lockedWordIds.clear();
     this.clearActiveSegment();
-    this.allSpecs = [];
   }
 
   public destroy(): void {
     this.clear();
-    this.workAreaEl.remove();
-    this.styleEl.remove();
+    this.shadowRoot.innerHTML = '';
   }
 
   public isWordLocked(wordId: string): boolean {
@@ -356,107 +437,5 @@ export class CwiRenderer {
 
   public getWordCount(): number {
     return this.wordNodes.size;
-  }
-
-  public static getDefaultStylesheet(): string {
-    return `
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,slnt,wdth,wght,GRAD,XOPQ,XTRA,YOPQ,YTAS,YTDE,YTFI,YTLC,YTUC@8..144,-10..0,25..151,100..1000,-200..150,27..175,323..603,25..135,649..854,-305..-98,538..783,416..570,528..760&display=swap');
-
-:host {
-  all: initial;
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2147483647;
-  overflow: hidden;
-  --cwi-vh: 1vh;
-}
-
-/* RULE 1: Strictly restricted to lower 20% work area of video viewport */
-.cwi-work-area {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  top: 80%;
-  height: 20%;
-  max-height: 20%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 0.5% 3%;
-  box-sizing: border-box;
-  pointer-events: none;
-}
-
-/* RULE 2: 90% opacity black caption box backdrop (rgba(0, 0, 0, 0.90)) */
-.cwi-caption-box {
-  background-color: rgba(0, 0, 0, 0.90);
-  border-radius: 8px;
-  padding: 0.38em 0.85em;
-  max-width: 90%;
-  max-height: 94%;
-  display: none;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.22em 0.35em;
-  box-sizing: border-box;
-  overflow: hidden;
-  text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  transition: opacity 0.15s ease-out;
-}
-
-/* Base Word Token with Antialiased Sub-pixel Wipe Gradient */
-.cwi-word {
-  position: relative;
-  display: inline-block;
-  font-family: 'Roboto Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: calc(4.2 * var(--cwi-vh, 1vh));
-  line-height: 1.22;
-  font-optical-sizing: none;
-  white-space: pre;
-
-  /* CHANNEL 1: Colour Turn via linear-gradient background-clip: text wipe with smooth feather */
-  background-image: linear-gradient(
-    90deg,
-    var(--cwi-speaker-color, #4FC3F7) 0%,
-    var(--cwi-speaker-color, #4FC3F7) 48.5%,
-    var(--cwi-readahead-color, #B0B5BC) 51.5%,
-    var(--cwi-readahead-color, #B0B5BC) 100%
-  );
-  background-size: 200% 100%;
-  background-position: 100% 0%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-
-  transform-origin: center bottom;
-  will-change: transform, background-position;
-}
-
-/* Korean Locale Override */
-.cwi-word[data-locale="ko"] {
-  font-family: 'Noto Sans KR', 'CwiNotoSansKR', sans-serif;
-}
-
-/* Non-Speech SFX Badge */
-.cwi-sfx-badge {
-  font-family: 'Roboto Flex', sans-serif;
-  font-size: calc(3.2 * var(--cwi-vh, 1vh));
-  color: #E8EAED;
-  font-variation-settings: 'wght' 500, 'wdth' 95, 'slnt' -10;
-  padding: 0.1em 0.4em;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 4px;
-  margin-right: 0.35em;
-  display: inline-block;
-  align-self: center;
-  background-color: rgba(255, 255, 255, 0.08);
-}
-    `.trim();
   }
 }

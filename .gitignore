@@ -37,3 +37,6 @@ dist-ssr/
 # OS
 .DS_Store
 Thumbs.db
+
+timbre_voice_color_and_sync_fixes/
+

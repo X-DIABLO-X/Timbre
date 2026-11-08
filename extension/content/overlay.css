@@ -1,7 +1,6 @@
 /* Bundled Offline Variable Fonts:
  * - RobotoFlex-Full.woff2 (307 KB, all 13 axes)
- * - RobotoFlex-Subset-wdth-wght.woff2 (62 KB subset)
- * - NotoSansKR-Variable.woff2 (Korean Hangul fallback, weight + scale only)
+ * - NotoSansKR-Variable.woff2 (Korean Hangul fallback)
  */
 @font-face {
   font-family: 'CwiRobotoFlex';
@@ -28,7 +27,6 @@
   --cwi-vh: 1vh;
 }
 
-/* RULE 1: Strictly restricted to the lower 20% work area of the video viewport */
 .cwi-work-area {
   position: absolute;
   left: 0;
@@ -41,39 +39,33 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 0.5% 4%;
+  padding: 0.4% 4%;
   box-sizing: border-box;
   pointer-events: none;
 }
 
-/* RULE 2: 90% opacity black caption box backdrop (rgba(0, 0, 0, 0.90)) */
 .cwi-caption-box {
   background-color: rgba(0, 0, 0, 0.90);
-  border-radius: 8px;
-  padding: 0.45em 0.95em;
+  border-radius: 10px;
+  padding: 0.42em 0.92em;
   max-width: 92%;
   max-height: 96%;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
-  gap: 0.28em 0.36em;
+  gap: 0.24em 0.34em;
   box-sizing: border-box;
-  overflow: hidden;
+  contain: layout style;
 }
 
-/* Base Word Token in Read-Ahead Layer (1.75s before onset, >= 420ms floor) */
 .cwi-word {
   position: relative;
   display: inline-block;
-  font-family: 'CwiRobotoFlex', 'CwiNotoSansKR', sans-serif;
-  /* Normal speech = 5% of viewport height (1.0x baseline) */
-  font-size: calc(5 * var(--cwi-vh));
-  line-height: 1.15;
-  /* Safari WebKit wght:400 bug fix: disable optical sizing auto-override */
+  font-family: 'CwiRobotoFlex', 'Roboto Flex', 'CwiNotoSansKR', sans-serif;
+  font-size: calc(4.8 * var(--cwi-vh, 1vh));
+  line-height: 1.16;
   font-optical-sizing: none;
-
-  /* Pre-bound Roboto Flex 13 Parametric Axes */
   font-variation-settings:
     'wght' var(--cwi-wght, 400),
     'wdth' var(--cwi-wdth, 100),
@@ -89,12 +81,11 @@
     'YTLC' 514,
     'YTFI' 738;
 
-  /* CHANNEL 1: Colour Turn via linear-gradient background-clip: text wipe */
   background-image: linear-gradient(
     90deg,
     var(--cwi-speaker-color, #4FC3F7) 0%,
-    var(--cwi-speaker-color, #4FC3F7) 50%,
-    var(--cwi-readahead-color, #B0B5BC) 50.01%,
+    var(--cwi-speaker-color, #4FC3F7) 48.75%,
+    var(--cwi-readahead-color, #B0B5BC) 51.25%,
     var(--cwi-readahead-color, #B0B5BC) 100%
   );
   background-size: 200% 100%;
@@ -105,68 +96,13 @@
   color: transparent;
 
   transform-origin: center bottom;
-  will-change: transform, background-position, font-variation-settings;
-
-  /* WEAVE SINGLE-DELAY CSS SCHEDULING PATTERN:
-   * A single --cwi-onset-delay-ms triggers Colour Turn, 1.15x Pop, Crest envelope, and Hold lift!
-   */
-  animation-name: cwi-colour-turn-wipe, cwi-pop-crest-hold-envelope;
-  animation-duration: var(--cwi-duration-ms, 400ms), var(--cwi-duration-ms, 400ms);
-  animation-delay: var(--cwi-onset-delay-ms, 420ms), var(--cwi-onset-delay-ms, 420ms);
-  animation-timing-function: linear, cubic-bezier(0.22, 1, 0.36, 1);
-  animation-fill-mode: forwards, forwards;
+  transform: translate3d(0, 0em, 0) scale3d(1, 1, 1);
+  will-change: transform, background-position;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Korean Locale Override: Noto Sans KR Variable (retains weight & scale, omits wdth) */
 .cwi-word[data-locale="ko"] {
   font-family: 'CwiNotoSansKR', sans-serif;
   font-variation-settings: 'wght' var(--cwi-wght, 400);
-}
-
-/* CHANNEL 1 KEYFRAMES: Horizontal letter-by-letter wipe from t_start to t_end */
-@keyframes cwi-colour-turn-wipe {
-  0% {
-    background-position: 100% 0%;
-  }
-  100% {
-    background-position: 0% 0%;
-  }
-}
-
-/* CHANNELS 2, 3 & 5 KEYFRAMES:
- * - At onset (0%-18%): 1.15x Pop impulse combined with Crest peak overshoot + Hold lift (-0.525em)
- * - At sustain (35%-85%): Crest settles to 0.70 of peak (var(--cwi-crest-sustain)) and sustains
- * - At offset (100%): Releases back to rest while keeping post-onset speaker color
- */
-@keyframes cwi-pop-crest-hold-envelope {
-  0% {
-    transform: translateY(0em) scale(1.0);
-  }
-  18% {
-    transform: translateY(var(--cwi-hold-em, 0em))
-               scale(calc(var(--cwi-pop-scale, 1.15) * var(--cwi-crest-peak, 1.0)));
-  }
-  38% {
-    transform: translateY(var(--cwi-hold-em, 0em))
-               scale(var(--cwi-crest-sustain, 1.0));
-  }
-  85% {
-    transform: translateY(var(--cwi-hold-em, 0em))
-               scale(var(--cwi-crest-sustain, 1.0));
-  }
-  100% {
-    transform: translateY(0em) scale(var(--cwi-crest-sustain, 1.0));
-  }
-}
-
-/* Non-Speech & SFX Badge (<|BGM|>, <|Applause|>, [sighs], [gasps], [laughter]) */
-.cwi-sfx-badge {
-  font-family: 'CwiRobotoFlex', sans-serif;
-  font-size: calc(3.8 * var(--cwi-vh));
-  color: #E8EAED;
-  font-variation-settings: 'wght' 500, 'wdth' 95, 'slnt' -10;
-  padding: 0.1em 0.45em;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 4px;
-  margin-right: 0.35em;
 }

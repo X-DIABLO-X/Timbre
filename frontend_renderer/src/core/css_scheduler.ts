@@ -1,13 +1,5 @@
-/**
- * Single-Delay CSS Scheduling Helper
- * References:
- *   - docs/00_overview/folders.md
- *   - docs/01_contracts_and_schemas/typography_and_math_constants.md
- *   - docs/07_client_and_rendering/cwi_dom_renderer.md
- */
-
 import { WordToken } from './types';
-import { RenderProfile, DEFAULT_CWI_PROFILE, detectSafari } from './profiles';
+import { RenderProfile, DEFAULT_CWI_PROFILE } from './profiles';
 
 export interface WordCSSVariables {
   '--cwi-onset-delay-ms': string;
@@ -30,38 +22,40 @@ export interface WordCSSVariables {
 }
 
 /**
- * Pure calculation of the Single-Delay CSS custom property dictionary for a given WordToken,
- * presentation timestamp, and render profile.
+ * Computes all Roboto Flex variable font axes and kinetic scaling targets for a word token.
+ * Note: Does NOT clamp onset delay to 420ms during direct video playback so words trigger
+ * at exact millisecond alignment with <video>.currentTime.
  */
 export function computeWordCSSVariables(
   word: WordToken,
   presentMs: number,
   profile?: Partial<RenderProfile>
 ): WordCSSVariables {
-  const intensity = Math.max(0.0, Math.min(1.0, profile?.intensity ?? DEFAULT_CWI_PROFILE.intensity));
-  const isSafari = profile?.isSafari ?? detectSafari();
+  const prof: RenderProfile = { ...DEFAULT_CWI_PROFILE, ...profile };
+  const k = Math.max(0.0, Math.min(1.0, prof.intensity));
 
-  const rawDelayMs = word.start_ms - presentMs;
-  const onsetDelayMs = Math.max(420, rawDelayMs);
+  // Exact delay relative to current presentation time (no artificial 420ms minimum lag in VOD mode)
+  const onsetDelayMs = Math.max(0, Math.round(word.start_ms - presentMs));
 
   const t = word.typography;
-  let wght = Math.round(400 + intensity * (t.wght - 400));
-  // Safari WebKit wght:400 workaround: renders abnormally thin at 400
-  if (isSafari && wght >= 398 && wght <= 402) {
+  const weightK = prof.enableWeight ? k : 0.0;
+  let wght = Math.round(400 + weightK * (t.wght - 400));
+  if (prof.isSafari && wght >= 398 && wght <= 402) {
     wght = 404;
   }
 
-  const wdth = Math.round(100 + intensity * (t.wdth - 100));
-  const grad = Math.round(intensity * t.grad);
-  const popScale = (1.0 + intensity * (t.pop_scale - 1.0)).toFixed(3);
-  const crestPeak = (1.0 + intensity * (t.crest_scale - 1.0)).toFixed(4);
-  const crestSustain = (1.0 + intensity * (t.crest_sustain_scale - 1.0)).toFixed(4);
-  const holdEm = `${(intensity * t.hold_lift_em).toFixed(4)}em`;
+  const wdth = Math.round(100 + weightK * (t.wdth - 100));
+  const grad = Math.round(weightK * t.grad);
+
+  const popScale = prof.enablePop ? 1.0 + k * (t.pop_scale - 1.0) : 1.0;
+  const crestPeak = prof.enableCrest ? 1.0 + k * (t.crest_scale - 1.0) : 1.0;
+  const crestSustain = prof.enableCrest ? 1.0 + k * (t.crest_sustain_scale - 1.0) : 1.0;
+  const holdEm = prof.enableHold ? k * t.hold_lift_em : 0.0;
 
   return {
     '--cwi-onset-delay-ms': `${onsetDelayMs}ms`,
-    '--cwi-duration-ms': `${word.duration_ms}ms`,
-    '--cwi-speaker-color': word.speaker.color_hex,
+    '--cwi-duration-ms': `${Math.max(80, word.duration_ms)}ms`,
+    '--cwi-speaker-color': prof.enableColorTurn ? word.speaker.color_hex : '#FFFFFF',
     '--cwi-wght': `${wght}`,
     '--cwi-wdth': `${wdth}`,
     '--cwi-grad': `${grad}`,
@@ -72,16 +66,13 @@ export function computeWordCSSVariables(
     '--cwi-yopq': `${t.yopq ?? 79}`,
     '--cwi-ytas': `${t.ytas ?? 750}`,
     '--cwi-ytde': `${t.ytde ?? -203}`,
-    '--cwi-pop-scale': popScale,
-    '--cwi-crest-peak': crestPeak,
-    '--cwi-crest-sustain': crestSustain,
-    '--cwi-hold-em': holdEm,
+    '--cwi-pop-scale': popScale.toFixed(4),
+    '--cwi-crest-peak': crestPeak.toFixed(4),
+    '--cwi-crest-sustain': crestSustain.toFixed(4),
+    '--cwi-hold-em': `${holdEm.toFixed(4)}em`,
   };
 }
 
-/**
- * Binds all Single-Delay CSS custom properties directly onto the DOM element on first sight.
- */
 export function bindWordCSSVariables(
   el: HTMLElement,
   word: WordToken,
