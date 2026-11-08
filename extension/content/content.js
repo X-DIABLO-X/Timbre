@@ -132,12 +132,14 @@ function tickOverlay() {
 
       lockedWordIds.add(wordId);
       const t = w.typography;
-      const sSustain = 1.0 + k * (t.crest_sustain_scale - 1.0);
+      // Fixed: Words never shrink below 1.0 unprompted; normal speech rests at 1.0x scale
+      const crestScaleEff = Math.max(1.0, 1.0 + k * (t.crest_scale - 1.0));
+      const sSustain = crestScaleEff;
 
       if (currentMs >= w.end_ms) {
         if (prevPhase !== 'post') {
           el.style.backgroundPosition = '0% 0%';
-          el.style.transform = `translate3d(0, 0em, 0) scale3d(${sSustain.toFixed(4)}, ${sSustain.toFixed(4)}, 1)`;
+          el.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
           wordPhases.set(wordId, 'post');
         }
         continue;
@@ -148,12 +150,12 @@ function tickOverlay() {
       const progress = Math.max(0.0, Math.min(1.0, (currentMs - w.start_ms) / dur));
       el.style.backgroundPosition = `${((1.0 - progress) * 100.0).toFixed(2)}% 0%`;
 
-      const sPeak = (1.0 + k * (t.pop_scale - 1.0)) * (1.0 + k * (t.crest_scale - 1.0));
+      const sPeak = (1.0 + k * (t.pop_scale - 1.0)) * crestScaleEff;
       let scaleNow;
       if (progress <= 0.22) {
         scaleNow = 1.0 + smoothstep(0.0, 0.22, progress) * (sPeak - 1.0);
-      } else if (progress <= 0.52) {
-        scaleNow = sPeak + smoothstep(0.22, 0.52, progress) * (sSustain - sPeak);
+      } else if (progress <= 0.55) {
+        scaleNow = sPeak + smoothstep(0.22, 0.55, progress) * (sSustain - sPeak);
       } else {
         scaleNow = sSustain;
       }

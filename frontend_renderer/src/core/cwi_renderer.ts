@@ -359,14 +359,15 @@ export class CwiRenderer {
       }
 
       const t = word.typography;
-      const sSustain = enableCrest ? 1.0 + k * (t.crest_sustain_scale - 1.0) : 1.0;
+      // Fixed: Words never shrink below 1.0 unprompted; normal speech rests at 1.0x scale
+      const crestScaleEff = enableCrest ? Math.max(1.0, 1.0 + k * (t.crest_scale - 1.0)) : 1.0;
+      const sSustain = crestScaleEff;
 
       // STATE 3: Post-Onset / Completed Word (currentTimeMs >= word.end_ms)
       if (currentTimeMs >= word.end_ms) {
         if (prevPhase !== 'post') {
           el.style.backgroundPosition = '0% 0%';
-          const sFinal = sSustain.toFixed(4);
-          el.style.transform = `translate3d(0, 0em, 0) scale3d(${sFinal}, ${sFinal}, 1)`;
+          el.style.transform = 'translate3d(0, 0em, 0) scale3d(1, 1, 1)';
           this.wordPhases.set(wordId, 'post');
         }
         continue;
@@ -385,17 +386,16 @@ export class CwiRenderer {
         el.style.backgroundPosition = '0% 0%';
       }
 
-      // Channels 2 & 3: C2-Continuous Hermite Pop (1.15x) + Crest Peak -> 0.70 Sustain
+      // Channels 2 & 3: Decibel-envelope crest scaling and 1.15x Pop settle to standard size
       const popMult = enablePop ? 1.0 + k * (t.pop_scale - 1.0) : 1.0;
-      const crestPeak = enableCrest ? 1.0 + k * (t.crest_scale - 1.0) : 1.0;
-      const sPeak = popMult * crestPeak;
+      const sPeak = popMult * crestScaleEff;
 
       let scaleNow: number;
       if (progress <= 0.22) {
         const u = CwiRenderer.smoothstep(0.0, 0.22, progress);
         scaleNow = 1.0 + u * (sPeak - 1.0);
-      } else if (progress <= 0.52) {
-        const u = CwiRenderer.smoothstep(0.22, 0.52, progress);
+      } else if (progress <= 0.55) {
+        const u = CwiRenderer.smoothstep(0.22, 0.55, progress);
         scaleNow = sPeak + u * (sSustain - sPeak);
       } else {
         scaleNow = sSustain;

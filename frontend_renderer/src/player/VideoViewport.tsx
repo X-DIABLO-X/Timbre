@@ -156,7 +156,16 @@ export const VideoViewport: React.FC<VideoViewportProps> = ({
           src={videoSrc}
           controls
           playsInline
-          onLoadedMetadata={(e) => onLoadedMetadata?.(e.currentTarget.duration)}
+          onLoadedMetadata={(e) => {
+            const v = e.currentTarget;
+            // Disable native browser subtitle tracks to prevent dual text collision
+            if (v.textTracks) {
+              for (let i = 0; i < v.textTracks.length; i++) {
+                v.textTracks[i].mode = 'disabled';
+              }
+            }
+            onLoadedMetadata?.(v.duration);
+          }}
           onSeeked={(e) => {
             rendererRef.current?.tick(e.currentTarget.currentTime * 1000.0);
           }}
