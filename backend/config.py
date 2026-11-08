@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import platform
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, Optional
 try:
     import psutil
@@ -18,6 +19,33 @@ ProfileTier = Literal[
     "TIER_4_CPU_VULKAN",
 ]
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def resolve_media_path(filename: str, default_win_dir: str = "D:/dune") -> Path:
+    """
+    Resolves media and CaptionSpec files across environment variables, repo `data/`,
+    `frontend_renderer/public/`, `backend/ml_engine/`, and `D:/dune/` so the platform
+    runs on Windows, macOS, Linux, and CI pipelines without hardcoded path crashes.
+    """
+    env_dir = os.environ.get("CWI_DATA_DIR")
+    candidates = []
+    if env_dir:
+        candidates.append(Path(env_dir) / filename)
+    candidates.extend(
+        [
+            REPO_ROOT / "data" / filename,
+            REPO_ROOT / "frontend_renderer" / "public" / filename,
+            REPO_ROOT / "backend" / "ml_engine" / filename,
+            Path(default_win_dir) / filename,
+            Path(filename),
+        ]
+    )
+    for c in candidates:
+        if c.exists():
+            return c
+    return REPO_ROOT / "data" / filename
+
 
 @dataclass
 class EngineConfig:
@@ -32,7 +60,9 @@ class EngineConfig:
     whistress_checkpoint: str
     sensevoice_model_id: str
     emotion2vec_model_id: str
+    huggingface_token: Optional[str] = os.environ.get("HUGGINGFACE_TOKEN")
     presentation_offset_ms: int = 1750
+
     read_ahead_floor_ms: int = 420
     vad_silence_rms_threshold: float = 0.008
     kami_sent_max_chunks: int = 2

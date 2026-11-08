@@ -34,12 +34,18 @@ SPEAKER_PALETTE: Dict[str, Dict[str, object]] = {
     "SPK_00": {"name": "Chani", "color": "#4FC3F7", "bearing": -30.0},
     "SPK_01": {"name": "Paul Atreides", "color": "#FFD54F", "bearing": 20.0},
     "SPK_02": {"name": "Lady Jessica", "color": "#FF8A80", "bearing": -15.0},
-    "SPK_03": {"name": "Duke Leto Atreides", "color": "#69F0AE", "bearing": 10.0},
+    "SPK_03": {"name": "Duke Leto Atreides", "color": "#64B5F6", "bearing": 10.0},
     "SPK_04": {"name": "Reverend Mother", "color": "#B388FF", "bearing": -40.0},
     "SPK_05": {"name": "Baron Harkonnen", "color": "#FFAB40", "bearing": 60.0},
-    "SPK_06": {"name": "Duncan Idaho / Gurney Halleck", "color": "#80D8FF", "bearing": 30.0},
-    "SPK_07": {"name": "Stilgar / Supporting", "color": "#EA80FC", "bearing": 45.0},
+    "SPK_06": {"name": "Stilgar", "color": "#69F0AE", "bearing": 45.0},
+    "SPK_07": {"name": "Gurney Halleck", "color": "#FF7043", "bearing": -25.0},
+    "SPK_08": {"name": "Duncan Idaho", "color": "#26A69A", "bearing": 30.0},
+    "SPK_09": {"name": "Thufir Hawat", "color": "#AB47BC", "bearing": -50.0},
+    "SPK_10": {"name": "Herald of the Change", "color": "#D4E157", "bearing": 0.0},
+    "SPK_11": {"name": "Dr. Wellington Yueh", "color": "#8D6E63", "bearing": 25.0},
+    "SPK_12": {"name": "Dr. Liet Kynes", "color": "#26C6DA", "bearing": 40.0},
 }
+
 
 
 def parse_srt_time(ts_str: str) -> int:
@@ -522,7 +528,13 @@ def run_pipeline(
     seed_embeddings: Dict[str, np.ndarray] = {}
     fixed_overrides: Dict[int, str] = {}
 
+    module_dir = Path(__file__).resolve().parent
+    repo_root = module_dir.parents[1]
+
     anchor_db_paths = [
+        module_dir / "dune_character_anchors.json",
+        repo_root / "dune_character_anchors.json",
+        repo_root / "data" / "dune_character_anchors.json",
         Path("dune_character_anchors.json"),
         Path("D:/CAPTIONING/dune_character_anchors.json"),
         Path("D:/dune/character_anchors.json"),
@@ -543,73 +555,35 @@ def run_pipeline(
             return audio_full[s_s:e_s] if e_s > s_s + 400 else np.zeros(1600, dtype=np.float32)
 
         chars = anchor_db["characters"]
-        if "Chani" in chars:
-            anc = chars["Chani"]["primary_seed_anchor"]
-            emb = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-            if emb is not None:
-                seed_embeddings["SPK_00"] = emb
+        for char_key, char_info in chars.items():
+            spk_id = str(char_info.get("primary_spk_id", ""))
+            if not spk_id:
+                continue
 
-        if "Paul_Atreides" in chars:
-            anc = chars["Paul_Atreides"]["primary_seed_anchor"]
-            emb = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-            if emb is not None:
-                seed_embeddings["SPK_01"] = emb
+            anchors_list = []
+            if char_info.get("primary_seed_anchor"):
+                anchors_list.append(char_info["primary_seed_anchor"])
+            anchors_list.extend(char_info.get("secondary_anchors", []))
 
-        if "Lady_Jessica" in chars:
-            anc = chars["Lady_Jessica"]["primary_seed_anchor"]
-            emb = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-            if emb is not None:
-                seed_embeddings["SPK_02"] = emb
+            embs = []
+            for anc in anchors_list:
+                s_card = int(anc.get("start_card", -1))
+                e_card = int(anc.get("end_card", -1))
+                if s_card > 0 and e_card >= s_card:
+                    for seg_idx, seg in enumerate(parsed_segments):
+                        c_num = seg_idx + 1
+                        if s_card <= c_num <= e_card:
+                            fixed_overrides[seg_idx] = spk_id
 
-        if "Duke_Leto_Atreides" in chars:
-            anc = chars["Duke_Leto_Atreides"]["primary_seed_anchor"]
-            emb = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-            if emb is not None:
-                seed_embeddings["SPK_03"] = emb
+                if "start_ms" in anc and "end_ms" in anc:
+                    a_span = get_span_audio(int(anc["start_ms"]), int(anc["end_ms"]))
+                    e = diarizer._extract_embedding(a_span)
+                    if e is not None:
+                        embs.append(e)
 
-        if "Reverend_Mother_Gaius_Helen_Mohiam" in chars:
-            anc = chars["Reverend_Mother_Gaius_Helen_Mohiam"]["primary_seed_anchor"]
-            emb = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-            if emb is not None:
-                seed_embeddings["SPK_04"] = emb
-
-        if "Baron_Vladimir_Harkonnen" in chars:
-            anc = chars["Baron_Vladimir_Harkonnen"]["primary_seed_anchor"]
-            emb = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-            if emb is not None:
-                seed_embeddings["SPK_05"] = emb
-
-        e_dunc = None
-        e_gurn = None
-        if "Duncan_Idaho" in chars:
-            anc = chars["Duncan_Idaho"]["primary_seed_anchor"]
-            e_dunc = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-        if "Gurney_Halleck" in chars:
-            anc = chars["Gurney_Halleck"]["primary_seed_anchor"]
-            e_gurn = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-        if e_dunc is not None and e_gurn is not None:
-            comb = 0.5 * (e_dunc + e_gurn)
-            seed_embeddings["SPK_06"] = (comb / (np.linalg.norm(comb) + 1e-8)).astype(np.float32)
-        elif e_dunc is not None:
-            seed_embeddings["SPK_06"] = e_dunc
-        elif e_gurn is not None:
-            seed_embeddings["SPK_06"] = e_gurn
-
-        e_stil = None
-        e_her = None
-        if "Stilgar" in chars:
-            anc = chars["Stilgar"]["primary_seed_anchor"]
-            e_stil = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-        if "Herald_of_the_Change" in chars:
-            anc = chars["Herald_of_the_Change"]["primary_seed_anchor"]
-            e_her = diarizer._extract_embedding(get_span_audio(anc["start_ms"], anc["end_ms"]))
-        if e_stil is not None and e_her is not None:
-            comb = 0.5 * (e_stil + e_her)
-            seed_embeddings["SPK_07"] = (comb / (np.linalg.norm(comb) + 1e-8)).astype(np.float32)
-        elif e_stil is not None:
-            seed_embeddings["SPK_07"] = e_stil
-        elif e_her is not None:
-            seed_embeddings["SPK_07"] = e_her
+            if embs:
+                mean_emb = np.mean(np.stack(embs, axis=0), axis=0)
+                seed_embeddings[spk_id] = (mean_emb / (np.linalg.norm(mean_emb) + 1e-8)).astype(np.float32)
 
     # Fixed turn overrides
     CHAR_TO_SPK_MAP = {
@@ -622,18 +596,20 @@ def run_pipeline(
         "Reverend Mother Gaius Helen Mohiam": "SPK_04",
         "Reverend Mother Gaius Helen Mohiam (using The Voice)": "SPK_04",
         "Baron Vladimir Harkonnen": "SPK_05",
-        "Duncan Idaho": "SPK_06",
-        "Gurney Halleck": "SPK_06",
-        "Gurney Halleck (quoting scripture)": "SPK_06",
-        "Stilgar": "SPK_07",
-        "Herald of the Change": "SPK_07",
-        "Thufir Hawat": "SPK_07",
-        "Dr. Wellington Yueh": "SPK_07",
+        "Stilgar": "SPK_06",
+        "Gurney Halleck": "SPK_07",
+        "Gurney Halleck (quoting scripture)": "SPK_07",
+        "Duncan Idaho": "SPK_08",
+        "Thufir Hawat": "SPK_09",
+        "Herald of the Change": "SPK_10",
+        "Dr. Wellington Yueh": "SPK_11",
+        "Dr. Liet Kynes": "SPK_12",
         "Atreides Army Chorus": "SPK_03",
         "Atreides Guard Officer": "SPK_03",
         "Atreides Guard": "SPK_03",
         "Guard Attendant": "SPK_03",
     }
+
 
     # Opening narration cards 1-19 (00:00:55 to 00:02:18, start_ms < 190000)
     for idx, seg in enumerate(parsed_segments):

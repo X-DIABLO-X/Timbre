@@ -5,13 +5,14 @@ import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Dict, Optional
-from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 
-from backend.config import detect_optimal_profile
+from backend.config import detect_optimal_profile, resolve_media_path
 from backend.ml_engine.orchestrator import ParallelAudioPipeline
 from backend.wearable_bridge.tcp_compass_server import WearableCompassTCPServer
+
 
 compass_server: Optional[WearableCompassTCPServer] = None
 
@@ -55,9 +56,9 @@ async def health_check() -> Dict[str, str]:
 
 @app.head("/api/video/dune")
 async def head_dune_video():
-    video_path = Path("D:/dune/final_video.mp4")
+    video_path = resolve_media_path("final_video.mp4")
     if not video_path.exists():
-        raise HTTPException(status_code=404, detail="Dune video not found at D:/dune/final_video.mp4")
+        raise HTTPException(status_code=404, detail=f"Dune video not found at {video_path}")
     file_size = video_path.stat().st_size
     return Response(
         headers={
@@ -70,9 +71,9 @@ async def head_dune_video():
 
 @app.get("/api/video/dune")
 async def stream_dune_video(request: Request):
-    video_path = Path("D:/dune/final_video.mp4")
+    video_path = resolve_media_path("final_video.mp4")
     if not video_path.exists():
-        raise HTTPException(status_code=404, detail="Dune video not found at D:/dune/final_video.mp4")
+        raise HTTPException(status_code=404, detail=f"Dune video not found at {video_path}")
 
     file_size = video_path.stat().st_size
     range_header = request.headers.get("range")
@@ -123,12 +124,43 @@ async def stream_dune_video(request: Request):
 
 
 @app.get("/api/captions/dune")
+@app.get("/api/cwi/dune")
 async def get_dune_captions():
-    cwi_path = Path("D:/dune/final_video.cwi.json")
+    cwi_path = resolve_media_path("final_video.cwi.json")
     if not cwi_path.exists():
         from backend.ml_engine.dune_cwi_generator import convert_dune_srt_to_cwi
         convert_dune_srt_to_cwi()
-    return JSONResponse(content=json.loads(cwi_path.read_text(encoding="utf-8")))
+    if not cwi_path.exists():
+        return JSONResponse(
+            status_code=404,
+            content={"error": "final_video.cwi.json not found", "checked_path": str(cwi_path)},
+        )
+    try:
+        data = json.loads(cwi_path.read_text(encoding="utf-8"))
+        return JSONResponse(content=data)
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
+@app.post("/api/process_audio")
+async def process_uploaded_audio(file: UploadFile = File(...)) -> JSONResponse:
+    try:
+        pcm_bytes = await file.read()
+        cfg = detect_optimal_profile()
+        pipeline = ParallelAudioPipeline(config=cfg)
+        spec = await pipeline.ingest_pcm_chunk(
+            pcm_bytes=pcm_bytes,
+            sample_rate=16000,
+            is_float32=False,
+            mode="buffered",
+            locale="en",
+        )
+        if spec is None:
+            return JSONResponse(content={"status": "silence", "words": []})
+        return JSONResponse(content=spec.model_dump())
+    except Exception as exc:
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
 
 
 @app.websocket("/ws")

@@ -44,6 +44,8 @@ DEFAULT_LOUDNESS_STATS: AudioLoudnessStats = AudioLoudnessStats(
 
 
 def clip(val: float, low: float, high: float) -> float:
+    if not math.isfinite(val):
+        return low
     return max(low, min(high, val))
 
 

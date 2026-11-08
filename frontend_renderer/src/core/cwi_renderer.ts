@@ -414,7 +414,6 @@ export class CwiRenderer {
       }
 
       // STATE 2: Active Word - Traveling Wave Packet across Characters (00:52 Synchronization)
-      this.wordPhases.set(wordId, 'active');
       const dur = Math.max(80, word.duration_ms);
       const progress = Math.max(0.0, Math.min(1.0, (currentTimeMs - word.start_ms) / dur));
       const numChars = chars.length;
@@ -422,19 +421,24 @@ export class CwiRenderer {
       const holdPeakEm = enableHold ? k * t.hold_lift_em : 0.0;
       const sigma = Math.max(0.18, 1.2 / Math.max(1, numChars));
 
-      // Synchronize variable font weight and width upon onset
-      const weightK = this.profile.enableWeight ? k : 0.0;
-      let wght = Math.round(400 + weightK * (t.wght - 400));
-      if (this.profile.isSafari && wght >= 398 && wght <= 402) {
-        wght = 404;
+      // Performance Optimization (Bug #4): Only mutate font-variation axes once upon onset transition,
+      // avoiding HarfBuzz glyph re-rasterization on every 16ms animation tick.
+      if (prevPhase !== 'active') {
+        this.wordPhases.set(wordId, 'active');
+        const weightK = this.profile.enableWeight ? k : 0.0;
+        let wght = Math.round(400 + weightK * (t.wght - 400));
+        if (this.profile.isSafari && wght >= 398 && wght <= 402) {
+          wght = 404;
+        }
+        const wdth = Math.round(100 + weightK * (t.wdth - 100));
+        const grad = Math.round(weightK * t.grad);
+        el.style.setProperty('--cwi-wght', `${wght}`);
+        el.style.setProperty('--cwi-wdth', `${wdth}`);
+        el.style.setProperty('--cwi-grad', `${grad}`);
       }
-      const wdth = Math.round(100 + weightK * (t.wdth - 100));
-      const grad = Math.round(weightK * t.grad);
-      el.style.setProperty('--cwi-wght', `${wght}`);
-      el.style.setProperty('--cwi-wdth', `${wdth}`);
-      el.style.setProperty('--cwi-grad', `${grad}`);
 
       for (let i = 0; i < numChars; i++) {
+
         const charEl = chars[i];
         const tau = (i + 0.5) / Math.max(1, numChars);
         const dist = tau - progress;

@@ -1,13 +1,13 @@
-// AudioWorkletProcessor: Downmixes stereo/multi-channel audio to mono, resamples from
-// AudioContext sampleRate (e.g. 44100 or 48000 Hz) to 16000 Hz, and emits 100ms (1600-sample)
-// Int16 and Float32 chunks.
+// Zero-Allocation AudioWorkletProcessor: Pre-allocates mono downmix scratch buffers
+// in constructor to avoid Garbage Collection pauses on the real-time WebAudio thread.
 
 class PCM16kWorkletProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.targetSampleRate = 16000;
-    this.chunkSamples = 1600; // 100ms at 16,000 Hz (matches Pyannote 6,400-byte Float32 chunk)
+    this.chunkSamples = 1600; // 100ms at 16,000 Hz
     this.outBufferF32 = new Float32Array(this.chunkSamples);
+    this.monoScratch = new Float32Array(1024);
     this.outWriteIndex = 0;
     this.fractionalPos = 0.0;
   }
@@ -20,28 +20,28 @@ class PCM16kWorkletProcessor extends AudioWorkletProcessor {
 
     const numChannels = input.length;
     const numFrames = input[0].length;
-    const monoFrame = new Float32Array(numFrames);
+    if (this.monoScratch.length < numFrames) {
+      this.monoScratch = new Float32Array(numFrames * 2);
+    }
 
-    // 1. Downmix all channels to mono
+    const invChannels = 1.0 / numChannels;
     for (let i = 0; i < numFrames; i++) {
       let sum = 0.0;
       for (let c = 0; c < numChannels; c++) {
         sum += input[c][i];
       }
-      monoFrame[i] = sum / numChannels;
+      this.monoScratch[i] = sum * invChannels;
     }
 
-    // 2. Linear interpolation resampling from sampleRate -> 16000 Hz
     const step = sampleRate / this.targetSampleRate;
     while (this.fractionalPos < numFrames) {
       const idx = Math.floor(this.fractionalPos);
       const frac = this.fractionalPos - idx;
-      const s0 = monoFrame[idx];
-      const s1 = idx + 1 < numFrames ? monoFrame[idx + 1] : s0;
+      const s0 = this.monoScratch[idx];
+      const s1 = idx + 1 < numFrames ? this.monoScratch[idx + 1] : s0;
       const sample = s0 + frac * (s1 - s0);
 
       this.outBufferF32[this.outWriteIndex++] = Math.max(-1.0, Math.min(1.0, sample));
-
       if (this.outWriteIndex >= this.chunkSamples) {
         this.flushChunk();
       }
@@ -57,7 +57,8 @@ class PCM16kWorkletProcessor extends AudioWorkletProcessor {
     for (let i = 0; i < this.chunkSamples; i++) {
       const s = this.outBufferF32[i];
       sumSq += s * s;
-      pcmInt16[i] = s < 0 ? Math.max(-32768, Math.round(s * 32768)) : Math.min(32767, Math.round(s * 32767));
+      pcmInt16[i] =
+        s < 0 ? Math.max(-32768, Math.round(s * 32768)) : Math.min(32767, Math.round(s * 32767));
     }
     const rmsLinear = Math.sqrt(sumSq / this.chunkSamples);
     const f32Copy = new Float32Array(this.outBufferF32);

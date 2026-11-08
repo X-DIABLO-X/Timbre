@@ -62,6 +62,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  // Acknowledge offscreen heartbeat to keep MV3 service worker active
+  if (message.type === 'OFFSCREEN_HEARTBEAT') {
+    sendResponse({ ok: true, ts: Date.now() });
+    return false;
+  }
+
+
   // Forward CaptionSpec v2.0-cwi emitted by offscreen.js (via WS or WebGPU Worker) to active tab content.js
   if (message.type === 'CAPTION_SPEC_PAYLOAD' && activeTabId !== null) {
     chrome.tabs.sendMessage(activeTabId, {
