@@ -204,12 +204,17 @@ function tickOverlay() {
         const ch = charEl.textContent || '';
         const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
 
-        const charScale = isPunct ? 1.0 : (1.0 + (sPeak - 1.0) * wave);
-        const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI) * wave;
+        // Smooth attack envelope so characters don't pop prematurely at progress = 0.0
+        const attackWindow = Math.min(1.0, progress * Math.max(1, numChars) * 2.0);
+        const effectiveWave = wave * attackWindow;
+        const charScale = isPunct ? 1.0 : (1.0 + (sPeak - 1.0) * effectiveWave);
+        const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI) * effectiveWave;
 
         charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
 
-        if (progress >= (i / Math.max(1, numChars))) {
+        // Horizontal color wipe strictly triggers as progress reaches character phonetic threshold
+        const charActivationThreshold = (i + 0.35) / Math.max(1, numChars);
+        if (progress >= charActivationThreshold) {
           charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
         } else {
           charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';

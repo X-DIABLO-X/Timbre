@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import numpy as np
+import scipy.signal
 import soundfile as sf
 import librosa
 
@@ -342,8 +343,8 @@ def extract_all_acoustic_words(
             if (g_idx + 1) % 50 == 0 or g_idx == len(mini_groups) - 1:
                 print(f"[CWI] Transcribing dialogue window {g_idx + 1}/{len(mini_groups)}...")
 
-            win_s = max(0, int(group[0]["start_ms"]) - 1500)
-            win_e = int(group[-1]["end_ms"]) + 1500
+            win_s = max(0, int(group[0]["start_ms"]) - 200)
+            win_e = int(group[-1]["end_ms"]) + 300
             prompt = " ".join(str(s["text"]) for s in group)
 
             frames_to_read = int((win_e - win_s) / 1000.0 * sr)
@@ -450,6 +451,100 @@ def align_words_to_acoustic_waveform(
         seg_end_ms=seg_end_ms,
         sr=sr,
     )
+
+
+def detect_card_acoustic_onset(
+    audio: np.ndarray,
+    sr: int,
+    w_start: int,
+    w_end: int,
+) -> int:
+    """
+    Detects true acoustic vocal onset in the vicinity of word[0].start_ms.
+    Uses high-pass filtering (80Hz cutoff) and short-time energy tracking.
+    Prevents subtitle character highlighting before the speaker vocalizes.
+    """
+    s_sec = max(0.0, (w_start - 400) / 1000.0)
+    e_sec = (w_start + 1200) / 1000.0
+    s_idx = int(s_sec * sr)
+    e_idx = min(len(audio), int(e_sec * sr))
+    num_f = e_idx - s_idx
+    if num_f < 320:
+        return w_start
+
+    chunk = audio[s_idx:e_idx]
+    sos = scipy.signal.butter(4, 80.0, btype="highpass", fs=sr, output="sos")
+    chunk_hp = scipy.signal.sosfilt(sos, chunk)
+
+    hop = int(sr * 0.010)  # 10ms hop
+    win = int(sr * 0.025)  # 25ms window
+    if len(chunk_hp) < win:
+        return w_start
+
+    rms = librosa.feature.rms(y=chunk_hp, frame_length=win, hop_length=hop)[0]
+    times_ms = [int(s_sec * 1000 + i * 10) for i in range(len(rms))]
+
+    noise_floor = float(np.percentile(rms, 25))
+    peak_rms = float(np.percentile(rms, 95))
+    dynamic_range = peak_rms - noise_floor
+    if dynamic_range < 0.004:
+        return w_start
+
+    thresh = noise_floor + 0.16 * max(0.005, dynamic_range)
+
+    # Search for sustained acoustic vocal energy in [w_start - 100, w_start + 800]
+    cands = []
+    for i in range(len(rms) - 1):
+        t = times_ms[i]
+        if (w_start - 100 <= t <= w_start + 800):
+            if rms[i] >= thresh and rms[i + 1] >= thresh:
+                cands.append(t)
+
+    if cands:
+        return cands[0]
+    return w_start
+
+
+def snap_card_words_to_acoustic_onset(
+    word_spans: List[Tuple[int, int]],
+    acoustic_onset_ms: int,
+    min_word_dur_ms: int = 140,
+) -> List[Tuple[int, int]]:
+    """
+    Snaps word_spans[0][0] forward to acoustic_onset_ms when premature lead > 40ms is detected.
+    Preserves minimum word durations (>= 140ms) and monotonicity across all words in the card.
+    """
+    if not word_spans:
+        return []
+
+    w0_s = word_spans[0][0]
+    lead = acoustic_onset_ms - w0_s
+    if lead <= 40:
+        return word_spans
+
+    if len(word_spans) == 1:
+        s, e = word_spans[0]
+        new_s = acoustic_onset_ms
+        new_e = max(new_s + min_word_dur_ms, e)
+        return [(new_s, new_e)]
+
+    new_spans: List[Tuple[int, int]] = []
+    w0_s, w0_e = word_spans[0]
+    new_w0_s = acoustic_onset_ms
+    new_w0_e = max(new_w0_s + min_word_dur_ms, w0_e)
+    new_spans.append((new_w0_s, new_w0_e))
+
+    cur_end = new_w0_e
+    for i in range(1, len(word_spans)):
+        s, e = word_spans[i]
+        dur = max(min_word_dur_ms, e - s)
+        if s < cur_end:
+            s = cur_end
+            e = s + dur
+        new_spans.append((s, e))
+        cur_end = e
+
+    return new_spans
 
 
 def run_pipeline(
@@ -692,9 +787,21 @@ def run_pipeline(
             sr=sr,
         )
 
+        # PASS 2b: Snap to true acoustic vocal onset (eliminates premature character highlighting)
+        if has_audio and word_spans and len(audio_full) > 0:
+            w0_s = word_spans[0][0]
+            wN_e = word_spans[-1][1]
+            acoustic_onset = detect_card_acoustic_onset(
+                audio=audio_full,
+                sr=sr,
+                w_start=w0_s,
+                w_end=wN_e,
+            )
+            word_spans = snap_card_words_to_acoustic_onset(word_spans, acoustic_onset)
+
         word_raw_info: List[Dict[str, object]] = []
         for w_idx, (w_text, (w_start, w_end)) in enumerate(zip(raw_words, word_spans)):
-            w_dur = max(80, w_end - w_start)
+            w_dur = max(140, w_end - w_start)
             ws_sample = max(0, int((w_start / 1000.0) * sr))
             we_sample = min(len(audio_full), int((w_end / 1000.0) * sr))
             w_audio = audio_full[ws_sample:we_sample]
