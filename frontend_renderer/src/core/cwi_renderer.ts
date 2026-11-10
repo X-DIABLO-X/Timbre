@@ -476,17 +476,16 @@ export class CwiRenderer {
           const ch = charEl.textContent || '';
           const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
 
-          // Smooth attack envelope so characters don't pop prematurely at progress = 0.0
-          const attackWindow = Math.min(1.0, progress * Math.max(1, numChars) * 2.0);
-          const effectiveWave = wave * attackWindow;
-          const charScale = isPunct ? 1.0 : (enablePop ? (1.0 + (sPeak - 1.0) * effectiveWave) : 1.0);
-          const yLiftEm = enableHold ? (holdPeakEm * Math.sin(progress * Math.PI) * effectiveWave) : 0.0;
+          // Zero-latency attack: wave starts immediately with voice onset
+          const charScale = isPunct ? 1.0 : (enablePop ? (1.0 + (sPeak - 1.0) * wave) : 1.0);
+          const yLiftEm = enableHold ? (holdPeakEm * Math.sin(progress * Math.PI) * wave) : 0.0;
 
           charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
 
           if (enableColor) {
             // Horizontal color wipe strictly triggers as progress reaches character phonetic threshold
-            const charActivationThreshold = (i + 0.35) / Math.max(1, numChars);
+            // Character 0 turns speaker color instantly at progress >= 0.0 (exact voice onset)
+            const charActivationThreshold = i / Math.max(1, numChars);
             if (progress >= charActivationThreshold) {
               charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
             } else {

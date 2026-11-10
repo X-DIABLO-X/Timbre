@@ -230,16 +230,15 @@ function tickOverlay() {
           const ch = charEl.textContent || '';
           const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
 
-          // Smooth attack envelope so characters don't pop prematurely at progress = 0.0
-          const attackWindow = Math.min(1.0, progress * Math.max(1, numChars) * 2.0);
-          const effectiveWave = wave * attackWindow;
-          const charScale = isPunct ? 1.0 : (1.0 + (sPeak - 1.0) * effectiveWave);
-          const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI) * effectiveWave;
+          // Zero-latency attack: wave starts immediately with voice onset
+          const charScale = isPunct ? 1.0 : (1.0 + (sPeak - 1.0) * wave);
+          const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI) * wave;
 
           charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
 
           // Horizontal color wipe strictly triggers as progress reaches character phonetic threshold
-          const charActivationThreshold = (i + 0.35) / Math.max(1, numChars);
+          // Character 0 turns speaker color instantly at progress >= 0.0 (exact voice onset)
+          const charActivationThreshold = i / Math.max(1, numChars);
           if (progress >= charActivationThreshold) {
             charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
           } else {

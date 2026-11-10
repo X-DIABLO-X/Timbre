@@ -10,7 +10,7 @@ import math
 import re
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import scipy.signal
 import soundfile as sf
@@ -355,7 +355,7 @@ def extract_all_acoustic_words(
                 audio_chunk = audio_chunk.mean(axis=1)
 
             segments, _ = model.transcribe(
-                audio_chunk, word_timestamps=True, language="en", initial_prompt=prompt
+                audio_chunk, word_timestamps=True, language="en"
             )
             for s in segments:
                 for w in (s.words or []):
@@ -414,7 +414,8 @@ def align_words_to_acoustic_waveform(
     raw_words: List[str],
     acoustic_words: Optional[List[Dict[str, object]]] = None,
     sr: int = 16000,
-) -> List[Tuple[int, int]]:
+    return_meta: bool = False,
+) -> Union[List[Tuple[int, int]], Tuple[List[Tuple[int, int]], bool]]:
     """
     Aligns SRT words to exact acoustic timestamps extracted directly from audio via faster-whisper.
     Uses dynamic programming token alignment and intelligent vocal island gap interpolation.
@@ -423,11 +424,13 @@ def align_words_to_acoustic_waveform(
     """
     n_words = len(raw_words)
     if n_words == 0:
-        return []
+        return ([], False) if return_meta else []
+
+    is_word0_whisper = False
 
     if acoustic_words:
-        win_min = max(0, seg_start_ms - 600)
-        win_max = seg_end_ms + 600
+        win_min = max(0, seg_start_ms - 4500)
+        win_max = seg_end_ms + 800
         candidates = [
             w for w in acoustic_words
             if win_min <= int(w["start_ms"]) <= win_max
@@ -451,13 +454,16 @@ def align_words_to_acoustic_waveform(
             elif m_count > 0:
                 first_m_s = int(alignment[matched_indices[0]]["start_ms"])  # type: ignore
                 last_m_e = int(alignment[matched_indices[-1]]["end_ms"])  # type: ignore
-                if first_m_s < seg_start_ms - 750 or last_m_e > seg_end_ms + 750:
+                if first_m_s < seg_start_ms - 4800 or last_m_e > seg_end_ms + 1000:
                     is_spurious = True
 
             if is_spurious:
                 alignment = [None] * n_words
+            else:
+                if alignment[0] is not None:
+                    is_word0_whisper = True
 
-            return fill_unmatched_words(
+            spans = fill_unmatched_words(
                 card_words=raw_words,
                 alignment=alignment,
                 seg_audio=seg_audio,
@@ -465,9 +471,10 @@ def align_words_to_acoustic_waveform(
                 seg_end_ms=seg_end_ms,
                 sr=sr,
             )
+            return (spans, is_word0_whisper) if return_meta else spans
 
     # High-resolution DSP onset flux fallback
-    return fill_unmatched_words(
+    spans = fill_unmatched_words(
         card_words=raw_words,
         alignment=[None] * n_words,
         seg_audio=seg_audio,
@@ -475,6 +482,7 @@ def align_words_to_acoustic_waveform(
         seg_end_ms=seg_end_ms,
         sr=sr,
     )
+    return (spans, False) if return_meta else spans
 
 
 def detect_card_acoustic_onset(
@@ -812,17 +820,20 @@ def run_pipeline(
         if not raw_words:
             continue
 
-        word_spans = align_words_to_acoustic_waveform(
+        word_spans, is_word0_whisper = align_words_to_acoustic_waveform(
             seg_audio=seg_audio,
             seg_start_ms=seg_start_ms,
             seg_end_ms=seg_end_ms,
             raw_words=raw_words,
             acoustic_words=acoustic_words,
             sr=sr,
+            return_meta=True,
         )
 
         # PASS 2b: Snap to true acoustic vocal onset (eliminates premature character highlighting)
-        if has_audio and word_spans and len(audio_full) > 0:
+        # Snapping is applied ONLY if Word 0 was unmatched (DSP fallback) to prevent premature highlights on SRT fallbacks.
+        # When Word 0 is matched to Whisper, Whisper's acoustic cross-attention timestamp is already the exact vocal onset.
+        if has_audio and word_spans and len(audio_full) > 0 and (not is_word0_whisper):
             w0_s = word_spans[0][0]
             wN_e = word_spans[-1][1]
             acoustic_onset = detect_card_acoustic_onset(
@@ -971,30 +982,21 @@ def run_pipeline(
             )
         )
 
-    # PASS 3: Card Monotonicity & Chronological Ordering Enforcement
+    # PASS 3: Card Monotonicity & Chronological Ordering Enforcement (Zero Domino Delay Cascade)
     for i in range(1, len(specs_out)):
         prev_spec = specs_out[i - 1]
         curr_spec = specs_out[i]
         if curr_spec.words and prev_spec.words:
             prev_first_s = prev_spec.words[0].start_ms
-            prev_last_e = prev_spec.words[-1].end_ms
             curr_first_s = curr_spec.words[0].start_ms
 
-            # Enforce non-inversion: current card cannot start before previous card
+            # Enforce non-inversion: current card cannot start before previous card starts
             if curr_first_s < prev_first_s:
-                target_s = max(prev_first_s + 150, prev_last_e + 20)
+                target_s = prev_first_s + 50
                 shift = target_s - curr_first_s
                 for w in curr_spec.words:
                     w.start_ms += shift
                     w.end_ms += shift
-            elif curr_first_s < prev_last_e - 250:
-                # Cap excessive inter-card overlap to 250ms max
-                target_s = prev_last_e - 250
-                shift = target_s - curr_first_s
-                if shift > 0:
-                    for w in curr_spec.words:
-                        w.start_ms += shift
-                        w.end_ms += shift
 
     out_path = Path(out_json)
     out_path.parent.mkdir(parents=True, exist_ok=True)
