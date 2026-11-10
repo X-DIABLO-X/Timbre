@@ -437,34 +437,64 @@ export class CwiRenderer {
         el.style.setProperty('--cwi-grad', `${grad}`);
       }
 
-      for (let i = 0; i < numChars; i++) {
+      // Detect if word is shouting (high vocal intensity / all-caps / exclamation / high crest scale)
+      const cleanTxt = word.text.replace(/[^a-zA-Z]/g, '');
+      const isAllCaps = cleanTxt.length > 1 && cleanTxt === cleanTxt.toUpperCase();
+      const hasExclamation = word.text.endsWith('!');
+      const isHighCrest = t && (t.crest_scale >= 1.30);
+      const isHighProsody = word.prosody && (word.prosody.rms_db >= -18.0 && word.prosody.prominence_score >= 0.70);
+      const isShout = isAllCaps || hasExclamation || isHighCrest || isHighProsody;
 
-        const charEl = chars[i];
-        const tau = (i + 0.5) / Math.max(1, numChars);
-        const dist = tau - progress;
-        const wave = Math.exp(-(dist * dist) / (2.0 * sigma * sigma));
+      if (isShout) {
+        // SHOUT WORD: Entire word zooms in and zooms out synchronously according to timings (no wave format)
+        const sShoutPeak = 1.0 + k * Math.max(0.25, (t.crest_scale * 1.20 - 1.0));
+        const zoomEnvelope = Math.pow(Math.sin(progress * Math.PI), 0.75);
+        const wordScale = enablePop ? (1.0 + (sShoutPeak - 1.0) * zoomEnvelope) : 1.0;
+        const yLiftEm = enableHold ? (holdPeakEm * Math.sin(progress * Math.PI)) : 0.0;
 
-        const ch = charEl.textContent || '';
-        const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
+        for (let i = 0; i < numChars; i++) {
+          const charEl = chars[i];
+          const ch = charEl.textContent || '';
+          const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
+          const charScale = isPunct ? 1.0 : wordScale;
 
-        // Smooth attack envelope so characters don't pop prematurely at progress = 0.0
-        const attackWindow = Math.min(1.0, progress * Math.max(1, numChars) * 2.0);
-        const effectiveWave = wave * attackWindow;
-        const charScale = isPunct ? 1.0 : (enablePop ? (1.0 + (sPeak - 1.0) * effectiveWave) : 1.0);
-        const yLiftEm = enableHold ? (holdPeakEm * Math.sin(progress * Math.PI) * effectiveWave) : 0.0;
-
-        charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
-
-        if (enableColor) {
-          // Horizontal color wipe strictly triggers as progress reaches character phonetic threshold
-          const charActivationThreshold = (i + 0.35) / Math.max(1, numChars);
-          if (progress >= charActivationThreshold) {
+          charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
+          if (enableColor) {
             charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
           } else {
-            charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+            charEl.style.color = '#FFFFFF';
           }
-        } else {
-          charEl.style.color = '#FFFFFF';
+        }
+      } else {
+        // NORMAL WORD: Traveling wave packet across characters (progressive phonetic wipe)
+        for (let i = 0; i < numChars; i++) {
+          const charEl = chars[i];
+          const tau = (i + 0.5) / Math.max(1, numChars);
+          const dist = tau - progress;
+          const wave = Math.exp(-(dist * dist) / (2.0 * sigma * sigma));
+
+          const ch = charEl.textContent || '';
+          const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
+
+          // Smooth attack envelope so characters don't pop prematurely at progress = 0.0
+          const attackWindow = Math.min(1.0, progress * Math.max(1, numChars) * 2.0);
+          const effectiveWave = wave * attackWindow;
+          const charScale = isPunct ? 1.0 : (enablePop ? (1.0 + (sPeak - 1.0) * effectiveWave) : 1.0);
+          const yLiftEm = enableHold ? (holdPeakEm * Math.sin(progress * Math.PI) * effectiveWave) : 0.0;
+
+          charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
+
+          if (enableColor) {
+            // Horizontal color wipe strictly triggers as progress reaches character phonetic threshold
+            const charActivationThreshold = (i + 0.35) / Math.max(1, numChars);
+            if (progress >= charActivationThreshold) {
+              charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
+            } else {
+              charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+            }
+          } else {
+            charEl.style.color = '#FFFFFF';
+          }
         }
       }
     }

@@ -343,8 +343,8 @@ def extract_all_acoustic_words(
             if (g_idx + 1) % 50 == 0 or g_idx == len(mini_groups) - 1:
                 print(f"[CWI] Transcribing dialogue window {g_idx + 1}/{len(mini_groups)}...")
 
-            win_s = max(0, int(group[0]["start_ms"]) - 200)
-            win_e = int(group[-1]["end_ms"]) + 300
+            win_s = max(0, int(group[0]["start_ms"]) - 1000)
+            win_e = int(group[-1]["end_ms"]) + 1000
             prompt = " ".join(str(s["text"]) for s in group)
 
             frames_to_read = int((win_e - win_s) / 1000.0 * sr)
@@ -419,20 +419,44 @@ def align_words_to_acoustic_waveform(
     Aligns SRT words to exact acoustic timestamps extracted directly from audio via faster-whisper.
     Uses dynamic programming token alignment and intelligent vocal island gap interpolation.
     Zero cramming, zero 80ms dummy slots, and zero artificial SRT clamping.
+    Tightened search windows and spurious token collision rejection protect against cross-card stealing.
     """
     n_words = len(raw_words)
     if n_words == 0:
         return []
 
     if acoustic_words:
-        win_min = max(0, seg_start_ms - 2000)
-        win_max = seg_end_ms + 2000
+        win_min = max(0, seg_start_ms - 600)
+        win_max = seg_end_ms + 600
         candidates = [
             w for w in acoustic_words
             if win_min <= int(w["start_ms"]) <= win_max
         ]
         if candidates:
             alignment = align_tokens_dp(raw_words, candidates)
+
+            # Spurious token match rejection (prevents cross-card token stealing)
+            matched_indices = [i for i, a in enumerate(alignment) if a is not None]
+            m_count = len(matched_indices)
+            is_spurious = False
+
+            # Single match in a multi-word card is unreliable noise (e.g. Card 508 stealing 'Sire,' from 511)
+            if m_count == 1 and n_words >= 3:
+                is_spurious = True
+            elif m_count <= 2 and n_words >= 5:
+                # Two matches in a longer sentence must cover meaningful content
+                matched_lens = [len(clean_word(str(alignment[idx].get("text", "")))) for idx in matched_indices]  # type: ignore
+                if max(matched_lens, default=0) <= 3:
+                    is_spurious = True
+            elif m_count > 0:
+                first_m_s = int(alignment[matched_indices[0]]["start_ms"])  # type: ignore
+                last_m_e = int(alignment[matched_indices[-1]]["end_ms"])  # type: ignore
+                if first_m_s < seg_start_ms - 750 or last_m_e > seg_end_ms + 750:
+                    is_spurious = True
+
+            if is_spurious:
+                alignment = [None] * n_words
+
             return fill_unmatched_words(
                 card_words=raw_words,
                 alignment=alignment,
@@ -461,13 +485,14 @@ def detect_card_acoustic_onset(
 ) -> int:
     """
     Detects true acoustic vocal onset in the vicinity of word[0].start_ms.
-    Uses high-pass filtering (80Hz cutoff) and short-time energy tracking.
+    Uses high-pass filtering (80Hz cutoff) and sustained short-time energy tracking.
     Prevents subtitle character highlighting before the speaker vocalizes.
+    Extended search window (up to +1600ms) handles dramatic pauses and silence padding.
     """
-    s_sec = max(0.0, (w_start - 400) / 1000.0)
-    e_sec = (w_start + 1200) / 1000.0
+    s_sec = max(0.0, (w_start - 300) / 1000.0)
+    e_sec = min(len(audio) / sr, max((w_end + 1200) / 1000.0, (w_start + 2600) / 1000.0))
     s_idx = int(s_sec * sr)
-    e_idx = min(len(audio), int(e_sec * sr))
+    e_idx = int(e_sec * sr)
     num_f = e_idx - s_idx
     if num_f < 320:
         return w_start
@@ -487,21 +512,30 @@ def detect_card_acoustic_onset(
     noise_floor = float(np.percentile(rms, 25))
     peak_rms = float(np.percentile(rms, 95))
     dynamic_range = peak_rms - noise_floor
-    if dynamic_range < 0.004:
+    if dynamic_range < 0.003:
         return w_start
 
     thresh = noise_floor + 0.16 * max(0.005, dynamic_range)
 
-    # Search for sustained acoustic vocal energy in [w_start - 100, w_start + 800]
+    # Search for sustained acoustic vocal energy in [w_start - 80, max(w_end + 800, w_start + 2400)]
+    max_search = max(w_end + 800, w_start + 2400)
     cands = []
-    for i in range(len(rms) - 1):
+    for i in range(len(rms) - 2):
         t = times_ms[i]
-        if (w_start - 100 <= t <= w_start + 800):
-            if rms[i] >= thresh and rms[i + 1] >= thresh:
+        if (w_start - 80 <= t <= max_search):
+            # 3 consecutive frames above threshold or 2 frames with strong energy
+            if (rms[i] >= thresh and rms[i + 1] >= thresh and rms[i + 2] >= thresh) or \
+               (rms[i] >= thresh * 1.5 and rms[i + 1] >= thresh * 1.5):
                 cands.append(t)
 
     if cands:
-        return cands[0]
+        # Step back 20-30ms to catch leading consonant burst if present
+        first_cand = cands[0]
+        cand_idx = next((i for i, t in enumerate(times_ms) if t == first_cand), 0)
+        for b in range(max(0, cand_idx - 3), cand_idx):
+            if rms[b] >= thresh * 0.8:
+                return times_ms[b]
+        return first_cand
     return w_start
 
 
@@ -936,6 +970,31 @@ def run_pipeline(
                 loudness_stats=video_loudness,
             )
         )
+
+    # PASS 3: Card Monotonicity & Chronological Ordering Enforcement
+    for i in range(1, len(specs_out)):
+        prev_spec = specs_out[i - 1]
+        curr_spec = specs_out[i]
+        if curr_spec.words and prev_spec.words:
+            prev_first_s = prev_spec.words[0].start_ms
+            prev_last_e = prev_spec.words[-1].end_ms
+            curr_first_s = curr_spec.words[0].start_ms
+
+            # Enforce non-inversion: current card cannot start before previous card
+            if curr_first_s < prev_first_s:
+                target_s = max(prev_first_s + 150, prev_last_e + 20)
+                shift = target_s - curr_first_s
+                for w in curr_spec.words:
+                    w.start_ms += shift
+                    w.end_ms += shift
+            elif curr_first_s < prev_last_e - 250:
+                # Cap excessive inter-card overlap to 250ms max
+                target_s = prev_last_e - 250
+                shift = target_s - curr_first_s
+                if shift > 0:
+                    for w in curr_spec.words:
+                        w.start_ms += shift
+                        w.end_ms += shift
 
     out_path = Path(out_json)
     out_path.parent.mkdir(parents=True, exist_ok=True)

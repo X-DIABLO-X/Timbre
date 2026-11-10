@@ -195,29 +195,56 @@ function tickOverlay() {
       el.style.setProperty('--cwi-wdth', `${Math.round(100 + k * (t.wdth - 100))}`);
       el.style.setProperty('--cwi-grad', `${Math.round(k * t.grad)}`);
 
-      for (let i = 0; i < numChars; i++) {
-        const charEl = chars[i];
-        const tau = (i + 0.5) / Math.max(1, numChars);
-        const dist = tau - progress;
-        const wave = Math.exp(-(dist * dist) / (2.0 * sigma * sigma));
+      // Detect if word is shouting (high vocal intensity / all-caps / exclamation / high crest scale)
+      const cleanTxt = (w.text || '').replace(/[^a-zA-Z]/g, '');
+      const isAllCaps = cleanTxt.length > 1 && cleanTxt === cleanTxt.toUpperCase();
+      const hasExclamation = (w.text || '').endsWith('!');
+      const isHighCrest = t && (t.crest_scale >= 1.30);
+      const isHighProsody = w.prosody && (w.prosody.rms_db >= -18.0 && w.prosody.prominence_score >= 0.70);
+      const isShout = isAllCaps || hasExclamation || isHighCrest || isHighProsody;
 
-        const ch = charEl.textContent || '';
-        const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
+      if (isShout) {
+        // SHOUT WORD: Entire word zooms in and zooms out synchronously according to timings (no wave format)
+        const sShoutPeak = 1.0 + k * Math.max(0.25, (t.crest_scale * 1.20 - 1.0));
+        const zoomEnvelope = Math.pow(Math.sin(progress * Math.PI), 0.75);
+        const wordScale = 1.0 + (sShoutPeak - 1.0) * zoomEnvelope;
+        const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI);
 
-        // Smooth attack envelope so characters don't pop prematurely at progress = 0.0
-        const attackWindow = Math.min(1.0, progress * Math.max(1, numChars) * 2.0);
-        const effectiveWave = wave * attackWindow;
-        const charScale = isPunct ? 1.0 : (1.0 + (sPeak - 1.0) * effectiveWave);
-        const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI) * effectiveWave;
+        for (let i = 0; i < numChars; i++) {
+          const charEl = chars[i];
+          const ch = charEl.textContent || '';
+          const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
+          const charScale = isPunct ? 1.0 : wordScale;
 
-        charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
-
-        // Horizontal color wipe strictly triggers as progress reaches character phonetic threshold
-        const charActivationThreshold = (i + 0.35) / Math.max(1, numChars);
-        if (progress >= charActivationThreshold) {
+          charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
           charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
-        } else {
-          charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+        }
+      } else {
+        // NORMAL WORD: Traveling wave packet across characters (progressive phonetic wipe)
+        for (let i = 0; i < numChars; i++) {
+          const charEl = chars[i];
+          const tau = (i + 0.5) / Math.max(1, numChars);
+          const dist = tau - progress;
+          const wave = Math.exp(-(dist * dist) / (2.0 * sigma * sigma));
+
+          const ch = charEl.textContent || '';
+          const isPunct = /^[.,\/#!$%\^&\*;:{}=\-_`~()]$/.test(ch);
+
+          // Smooth attack envelope so characters don't pop prematurely at progress = 0.0
+          const attackWindow = Math.min(1.0, progress * Math.max(1, numChars) * 2.0);
+          const effectiveWave = wave * attackWindow;
+          const charScale = isPunct ? 1.0 : (1.0 + (sPeak - 1.0) * effectiveWave);
+          const yLiftEm = holdPeakEm * Math.sin(progress * Math.PI) * effectiveWave;
+
+          charEl.style.transform = `translate3d(0, ${yLiftEm.toFixed(4)}em, 0) scale3d(${charScale.toFixed(4)}, ${charScale.toFixed(4)}, 1)`;
+
+          // Horizontal color wipe strictly triggers as progress reaches character phonetic threshold
+          const charActivationThreshold = (i + 0.35) / Math.max(1, numChars);
+          if (progress >= charActivationThreshold) {
+            charEl.style.color = 'var(--cwi-speaker-color, #4FC3F7)';
+          } else {
+            charEl.style.color = 'var(--cwi-readahead-color, #B0B5BC)';
+          }
         }
       }
     }
